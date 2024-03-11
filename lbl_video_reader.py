@@ -22,7 +22,7 @@ class ReadLabelVideo:
             print('.......')
             print(panorama1.shape)
             print(panorama2.shape)
-        if self.panorama_data % 2 == 1:
+        if len(self.panorama_data) % 2 == 1:
             print(f'manage panorama_data[-1]\n{self.panorama_data[-1]}')
 
         for num, panorama in enumerate(self.panorama_data):
