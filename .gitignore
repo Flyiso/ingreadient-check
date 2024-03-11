@@ -2,6 +2,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
+test_video.mp4
+outputs/
+save_stuff.py
+lbl_reader/
 
 # C extensions
 *.so
