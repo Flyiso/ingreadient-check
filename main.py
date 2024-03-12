@@ -1,7 +1,7 @@
 """
 Manages, runs and imports lbl readers modules.
 """
-from lbl_video_reader import ReadLabelVideo
+from label_video_reader import ReadLabelVideo
 from image_management import FindText
 import pytesseract as pt
 
