@@ -7,6 +7,7 @@ import cv2
 
 class CreatePanorama:
     def __init__(self, pan_group: int = 3) -> None:
+        self.merge_size = pan_group
         self.stitcher = cv2.Stitcher.create()
         self.waiting = []
         self.stitched = []
@@ -19,7 +20,7 @@ class CreatePanorama:
         self.waiting.append(panorama_image)
         self.all.append(panorama_image)
         print(len(self.waiting))
-        if len(self.waiting) >= 3:
+        if len(self.waiting) >= self.merge_size:
             self.stitch()
 
     def final_merge(self, final_img=None):

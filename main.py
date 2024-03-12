@@ -10,8 +10,8 @@ def run_app(filepath):
     Run all components of application in order-
     filepath: path to video of label
     """
-    frame_l = 5
-    frame_s = 15
+    frame_l = 10
+    frame_s = 30
     pan_group = 3
     save_img = False
 
@@ -29,6 +29,7 @@ def run_app(filepath):
             text_data = FindText(frames=label_data.panorama, config=config)
             for item in text_data.text:
                 print(item)
+                print('...')
         except:
             print('DID NOT WORK')
         print('')
