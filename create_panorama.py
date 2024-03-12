@@ -12,7 +12,7 @@ class CreatePanorama:
         self.stitched = []
         self.final_stitch_queue = []
 
-    def add_images(self, panorama_image):
+    def add_image(self, panorama_image):
         """
         activates merge for images in pairs.
         """
@@ -38,13 +38,13 @@ class CreatePanorama:
         if frame is not None:
             self.add_final(frame)
 
-        while len(self.final_stitch_queue) != 0 and len(self.stitched) != 1:
+        while len(self.final_stitch_queue) != 0 or len(self.stitched) != 1:
             self.waiting = []
             self.final_stitch_queue = self.stitched
             self.stitched = []
-            while self.final_stitch_queue > 1:
+            while len(self.final_stitch_queue) > 1:
                 self.waiting.append(self.final_stitch_queue.pop(0))
-                self.add_images(self.final_stitch_queue.pop(0))
+                self.add_image(self.final_stitch_queue.pop(0))
             if len(self.final_stitch_queue) == 1:
                 self.stitched.append(self.final_stitch_queue.pop(-1))
 
@@ -57,9 +57,9 @@ class CreatePanorama:
         Adds the final frame to the merge lists
         """
         if self.waiting != []:
-            self.add_images(frame)
+            self.add_image(frame)
         elif len(self.stitched) % 2 == 0:
             self.waiting.append(self.stitched.pop(-1))
-            self.add_images(frame)
+            self.add_image(frame)
         else:
             self.stitched.append(frame)
