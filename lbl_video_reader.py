@@ -14,7 +14,7 @@ class ReadLabelVideo:
         """
         self.video_path = video_path
         self.start_video()
-        self.panorama_data = self.frame_manager.generated_panoramas
+        self.panorama_data = self.frame_manager.panorama_frames
         for data in self.panorama_data:
             print(data.shape)
         for panorama1, panorama2 in zip(self.panorama_data[::2],
@@ -27,6 +27,7 @@ class ReadLabelVideo:
 
         for num, panorama in enumerate(self.panorama_data):
             cv2.imwrite(f'outputs/panorama_{num}.png', panorama)
+        print(f'min text regions found in allowed image: {self.frame_manager.min}') # to check remove later
 
     def start_video(self):
         """
@@ -39,8 +40,7 @@ class ReadLabelVideo:
 
             # end video, add last frame if no frame recently added.
             if not ret:
-                if frame_n % 20 < 5:
-                    self.frame_manager.check_frame(self.last_frame, True)
+                self.frame_manager.check_frame(self.last_frame, True)
                 break
 
             # set parameters for size and initialize Collect frames
@@ -86,12 +86,12 @@ class CollectFrames:
         initialize building of panorama image
         """
         self.n = 0
+        self.min = 5000  # to check min detection- remove later
         self.panorama_frames = []
         self.check_frame(first_frame)
-        self.generated_panoramas = []
         self.panorama_stitcher = CreatePanorama()
 
-    def check_frame(self, frame, last=False):
+    def check_frame(self, frame, last_frame: bool = False):
         """
         Concludes if frame quality is suitable
         for text recognition and panorama build.
@@ -100,15 +100,13 @@ class CollectFrames:
         print('Frame_check...')
         data = False
         data = self.find_text(frame)
+        if last_frame is True:
+            self.panorama_stitcher.final_merge(self.frame
+                                               if data is True else None)
+            return True
+
         if bool(data) is True:
-            self.panorama_frames.append(self.frame)
-            if last is True and len(self.panorama_frames) == 1:
-                self.generated_panoramas.append(
-                    [self.panorama_frames[-1], self.frame])
-            if len(self.panorama_frames) == 2 or last is True:
-                self.generated_panoramas.append(
-                    self.panorama_stitcher.add_images(self.panorama_frames))
-                self.panorama_frames = []
+            self.panorama_stitcher.add_image(self.frame)
             return True
         return False
 
@@ -119,7 +117,10 @@ class CollectFrames:
         data = pt.image_to_data(frame, config='--oem 3 --psm 6',
                                 output_type='dict',
                                 lang='swe')
-        if len(data['text']) >= 2:
+        if len(data['text']) >= 10:
+            if len(data['text']) < self.min:  # remove
+                self.min = len(data['text'])  # remove
+                print('new low')              # remove
             self.find_text_region(data, frame)
             return True
         return False
@@ -134,3 +135,30 @@ class CollectFrames:
                            min(data['top'][:1]):
                            min(data['top'][1:])+max(data['height'][1:])]
         cv2.imwrite(f'outputs/cropped_{self.n}.png', self.frame)
+
+    def merge_panoramas(self):
+        """
+        tries to merge all panoramas together.
+        """
+        print(f'final merge of {len(self.panorama_frames)} panoramas')
+        failure_frames = []
+        while len(self.panorama_frames) > 1:
+            print(f'frames: {len(self.panorama_frames)}  goal: 1')
+            for frame_1, frame_2 in zip(self.panorama_frames[::2],
+                                        self.panorama_frames[1::1]):
+                try:
+                    merged = self.panorama_stitcher.add_images([frame_1,
+                                                                frame_2])
+                    self.panorama_frames.append(merged)
+                    print(f'merged frames!- current no frames {len(self.panorama_frames)}')
+                except TypeError:
+                    print('failure...')
+                    failure_frames.append(frame_1)
+                    failure_frames.append(frame_2)
+                    self.panorama_frames.pop(0)
+                    if len(self.panorama_frames) > 1:
+                        self.panorama_frames.pop(1)
+        for idx, img in enumerate(self.panorama_frames):
+            cv2.imwrite(f'outputs/merged_{idx}.png', img)
+        for idx, img in enumerate(failure_frames):
+            cv2.imwrite(f'outputs/fail_{idx}.png', img)

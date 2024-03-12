@@ -3,42 +3,63 @@ Responsible for creating a readable panorama image
 from content saved by label reader.
 """
 import cv2
-import pytesseract as pt
 
 
 class CreatePanorama:
     def __init__(self) -> None:
         self.stitcher = cv2.Stitcher.create()
-        self.results = []
+        self.waiting = []
+        self.stitched = []
+        self.final_stitch_queue = []
 
-    def add_images(self, panorama_images: list):
-        image_stitched = self.stitch(panorama_images)
-        self.results.append(image_stitched)
-        return image_stitched
+    def add_images(self, panorama_image):
+        """
+        activates merge for images in pairs.
+        """
+        self.waiting.append(panorama_image)
+        if len(self.waiting) >= 2:
+            self.stitch()
 
-    def stitch(self, panorama_images):
-        print(len(panorama_images))
-        status, result = self.stitcher.stitch(panorama_images)
+    def stitch(self):
+        """
+        stitches 2 images together and adds result to
+        self.stitched
+        """
+        status, result = self.stitcher.stitch(self.waiting)
         if status != cv2.STITCHER_OK:
             print('Stitcher failed')
-            return
-        result = self.draw_on_image(result)
-        return result
+        self.stitched.append(result)
+        self.waiting = []
 
-    def draw_on_image(self, img):
+    def final_merge(self, frame=None):
         """
-        uses tessreact and cv2 boxes to find words.
+        Merge the final images together to one image.
         """
-        data = pt.image_to_data(img, config='--psm 12',
-                                output_type='data.frame',
-                                lang='swe')
-        for index, row in data.iterrows():
-            x, y, w, h = row['left'], row['top'], row['width'], row['height']
-            color = (255, 0, 0)  # default
-            thickness = 1
-            cv2.rectangle(img, (x, y), (x + w, y + h),
-                          color, thickness)
-            cv2.putText(img, str(index), (x, y-10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                        (255, 0, 0), 2)
-        return img
+        if frame is not None:
+            self.add_final(frame)
+
+        while len(self.final_stitch_queue) != 0 and len(self.stitched) != 1:
+            self.waiting = []
+            self.final_stitch_queue = self.stitched
+            self.stitched = []
+            while self.final_stitch_queue > 1:
+                self.waiting.append(self.final_stitch_queue.pop(0))
+                self.add_images(self.final_stitch_queue.pop(0))
+            if len(self.final_stitch_queue) == 1:
+                self.stitched.append(self.final_stitch_queue.pop(-1))
+
+            print(f'final_queue: {len(self.final_stitch_queue)}')
+            print(f'stitched: {len(self.stitched)}')
+            print(f'waiting: {len(self.waiting)}')
+
+    def add_final(self, frame):
+        """
+        Adds the final frame to the merge lists
+        """
+        if self.waiting != []:
+            self.add_images(frame)
+        elif len(self.stitched) % 2 == 0:
+            self.waiting.append(self.stitched.pop(-1))
+            self.add_images(frame)
+        else:
+            self.stitched.append(frame)
