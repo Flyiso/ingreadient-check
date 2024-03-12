@@ -3,6 +3,7 @@ Manages, runs and imports lbl readers modules.
 """
 from lbl_video_reader import ReadLabelVideo
 from image_management import FindText
+import pytesseract as pt
 
 
 def run_app(filepath):
@@ -30,8 +31,10 @@ def run_app(filepath):
             for item in text_data.text:
                 print(item)
                 print('...')
-        except:
+        except FileNotFoundError:
             print('DID NOT WORK')
+        except pt.TesseractError:
+            print('DID NOT WORK FOR ANOTHER REASON')
         print('')
 
 

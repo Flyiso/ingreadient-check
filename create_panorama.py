@@ -30,7 +30,6 @@ class CreatePanorama:
         print(len(self.stitched))
         if final_img is not None:
             self.waiting.append(final_img)
-
         if len(self.waiting) > 1:
             self.stitch()
 
@@ -43,9 +42,8 @@ class CreatePanorama:
         if status != cv2.STITCHER_OK:
             print('Stitcher failed')
             self.success = False
-            print('fail...')
+            return
         self.stitched.append(result)
         print('stitcher success!')
         self.success = True
         self.waiting = []
-        print(len(self.waiting))

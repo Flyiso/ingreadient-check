@@ -1,6 +1,6 @@
 """
-Manages and extracts data from 
-image.
+Manages and extracts data from
+merged images.
 """
 import pytesseract as pt
 
