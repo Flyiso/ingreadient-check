@@ -15,15 +15,20 @@ class ReadLabelVideo:
         self.video_path = video_path
         self.start_video()
         panorama = self.frame_manager.panorama_created
-        if len(panorama) >= 1:
-            print(len(panorama))
-            cv2.imwrite('outputs/FinalPanorama.jpg', panorama[0])
+        for id, pan in enumerate(panorama):
+            print(type(pan))
+            if pan is not None:
+                print('saves!')
+                cv2.imwrite(f'outputs/outputs_6/PANORAMA_{id}.png', pan)
 
     def start_video(self):
         """
         Loops through the frames and decides how to manage them
         """
         frame_n = 0
+        frame_limit = 2
+        frame_spacing = 30
+        frames = []
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
             ret, frame = self.capture.read()
@@ -37,16 +42,21 @@ class ReadLabelVideo:
             elif frame_n == 0:
                 frame_n = 1
                 self.initialize_video_parameters(frame)
-
-            # get new frame for panorama build in interval of 25
-            elif frame_n % 20 == 0:
+            elif frame_n == frame_limit:
                 frame = cv2.resize(frame, (self.width, self.height))
-                if self.frame_manager.check_frame(frame):
+                if self.frame_manager.check_frame(frames):
+                    frame_n += 1
+            # get new frame for panorama build in interval of 25
+            elif frame_n % frame_spacing == 0:
+                frame = cv2.resize(frame, (self.width, self.height))
+                if self.frame_manager.check_frame(frames):
                     frame_n += 1
             else:
                 frame = cv2.resize(frame, (self.width, self.height))
                 frame_n += 1
-
+            frames.append(frame)
+            if len(frames) >= frame_limit:
+                frames = frames[1:]
             # Display the current frame.
             cv2.imshow('frame', frame)
             self.last_frame = frame
@@ -77,22 +87,28 @@ class CollectFrames:
         """
         self.panorama_stitcher = CreatePanorama()
         self.panorama_created = self.panorama_stitcher.stitched
-        self.check_frame(first_frame)
 
-    def check_frame(self, frame, last_frame: bool = False):
+    def check_frame(self, frames: list, last_frame: bool = False):
         """
         Concludes if frame quality is suitable
         for text recognition and panorama build.
         Adds frame and returns True if image ok.
         """
-        data = False
-        data = self.find_text(frame)
+        data_max = 0
+        data = 0
+        for frame in frames:
+            data = self.find_text(frame)
+            if data >= data_max:
+                final_frame = self.frame
+                data_max = data
+
         if last_frame is True:
-            self.panorama_stitcher.final_merge(self.frame
-                                               if data is True else None)
+            print('final frame...')
+            self.panorama_stitcher.final_merge(final_frame
+                                               if data != 0 else None)
             return True
-        if bool(data) is True:
-            self.panorama_stitcher.add_image(self.frame)
+        if bool(data) != 0:
+            self.panorama_stitcher.add_image(final_frame)
             return True
         return False
 
@@ -103,10 +119,10 @@ class CollectFrames:
         data = pt.image_to_data(frame, config='--oem 3 --psm 6',
                                 output_type='dict',
                                 lang='swe')
-        if len(data['text']) >= 10:
+        if len(data['text']) >= 20:
             self.find_text_region(data, frame)
-            return True
-        return False
+            return len(data['text'])
+        return 0
 
     def find_text_region(self, data, frame):
         """

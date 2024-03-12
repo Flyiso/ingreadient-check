@@ -10,14 +10,27 @@ class CreatePanorama:
         self.stitcher = cv2.Stitcher.create()
         self.waiting = []
         self.stitched = []
-        self.final_stitch_queue = []
+        self.all = []
 
     def add_image(self, panorama_image):
         """
-        activates merge for images in pairs.
+        activates merge for images.
         """
         self.waiting.append(panorama_image)
-        if len(self.waiting) >= 2:
+        self.all.append(panorama_image)
+        print(len(self.waiting))
+        if len(self.waiting) >= 3:
+            self.stitch()
+
+    def final_merge(self, final_img=None):
+        """
+        merges final frames.
+        """
+        print(len(self.stitched))
+        if final_img is not None:
+            self.waiting.append(final_img)
+
+        if len(self.waiting) > 1:
             self.stitch()
 
     def stitch(self):
@@ -28,38 +41,10 @@ class CreatePanorama:
         status, result = self.stitcher.stitch(self.waiting)
         if status != cv2.STITCHER_OK:
             print('Stitcher failed')
+            self.success = False
+            print('fail...')
         self.stitched.append(result)
+        print('stitcher success!')
+        self.success = True
         self.waiting = []
-
-    def final_merge(self, frame=None):
-        """
-        Merge the final images together to one image.
-        """
-        if frame is not None:
-            self.add_final(frame)
-
-        while len(self.final_stitch_queue) != 0 or len(self.stitched) != 1:
-            self.waiting = []
-            self.final_stitch_queue = self.stitched
-            self.stitched = []
-            while len(self.final_stitch_queue) > 1:
-                self.waiting.append(self.final_stitch_queue.pop(0))
-                self.add_image(self.final_stitch_queue.pop(0))
-            if len(self.final_stitch_queue) == 1:
-                self.stitched.append(self.final_stitch_queue.pop(-1))
-
-            print(f'final_queue: {len(self.final_stitch_queue)}')
-            print(f'stitched: {len(self.stitched)}')
-            print(f'waiting: {len(self.waiting)}')
-
-    def add_final(self, frame):
-        """
-        Adds the final frame to the merge lists
-        """
-        if self.waiting != []:
-            self.add_image(frame)
-        elif len(self.stitched) % 2 == 0:
-            self.waiting.append(self.stitched.pop(-1))
-            self.add_image(frame)
-        else:
-            self.stitched.append(frame)
+        print(len(self.waiting))
