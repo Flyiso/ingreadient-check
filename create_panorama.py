@@ -6,7 +6,7 @@ import cv2
 
 
 class CreatePanorama:
-    def __init__(self) -> None:
+    def __init__(self, pan_group: int = 3) -> None:
         self.stitcher = cv2.Stitcher.create()
         self.waiting = []
         self.stitched = []
