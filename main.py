@@ -11,10 +11,10 @@ def run_app(filepath):
     Run all components of application in order-
     filepath: path to video of label
     """
-    frame_l = 10
-    frame_s = 30
+    frame_l = 3
+    frame_s = 15
     pan_group = 3
-    save_img = False
+    save_img = True
 
     configs = ['--psm 1', '--psm 2', '--psm 3', '--psm 4', '--psm 5',
                '--psm 6', '--psm 7', '--psm 8', '--psm 9', '--psm 10',

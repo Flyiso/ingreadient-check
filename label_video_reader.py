@@ -1,6 +1,8 @@
 import pytesseract as pt
+import numpy as np
 import cv2
 from create_panorama import CreatePanorama
+from scipy.stats import norm
 
 
 class ReadLabelVideo:
@@ -29,7 +31,8 @@ class ReadLabelVideo:
                 print(type(pan))
                 if pan is not None:
                     print('saves!')
-                    cv2.imwrite(f'outputs/outputs_6/PANORAMA_{id}.png', pan)
+                    cv2.imwrite(f'outputs/crop_and_scale/PANORAMA_{id}.png',
+                                pan)
 
     def start_video(self, frame_l, frame_s):
         """
@@ -94,6 +97,7 @@ class CollectFrames:
         """
         initialize building of panorama image
         """
+        self.f_n = 0
         self.panorama_stitcher = CreatePanorama(pan_group)
         self.panorama_created = self.panorama_stitcher.stitched
 
@@ -103,7 +107,7 @@ class CollectFrames:
         for text recognition and panorama build.
         Adds frame and returns True if image ok.
         """
-        data_max = 0
+        data_max = 1
         data = 0
         for frame in frames:
             data = self.find_text(frame)
@@ -125,19 +129,57 @@ class CollectFrames:
         """
         concludes if text can be found in frame
         """
-        data = pt.image_to_data(frame, config='--oem 3 --psm 6',
-                                output_type='dict',
-                                lang='swe')
+        data = pt.image_to_data(frame, config='--oem 3 --psm 6',output_type='dict', lang='swe')
+
         if len(data['text']) >= 20:
-            self.find_text_region(data, frame)
-            return len(data['text'])
+            #frame = self.crop_and_scale(data, frame)
+            if self.find_text_region(data, frame):
+                return len(data['text'])
         return 0
+
+    def crop_and_scale(self, data, frame):
+        """
+        Ties to adjust and crop the frame based on detected text location
+        """
+        #cv2.imwrite(f'outputs/frames/o_{self.f_n}.png', frame)
+        print('')
+        for idx, vals in enumerate(zip(*data.values())):
+            print(idx)
+            for key, val in zip(data.keys(), vals):
+                if key == 'height' and val == frame.shape[0] or key == 'width' and val == frame.shape[1]:
+                    'no remove? :( )'
+            print('...')
+        #input(',,,,,')
+        #cv2.imwrite(f'outputs/frames/w_{self.f_n}.png', frame)
+        return frame
 
     def find_text_region(self, data, frame):
         """
         Crop out the section of the image where text is found.
         """
+        id_r = set()
+        for idx, vals in enumerate(zip(*data.values())):
+            for key, val in zip(data.keys(), vals):
+                if key == 'height' and val == frame.shape[0] or key == 'width' and val == frame.shape[1]:
+                    id_r.add(idx)
+        if len(id_r) > 0:
+            id_r = list(id_r)
+            id_r.sort(reverse=True)
+            for id_n in id_r:
+                for val in data.values():
+                    if len(val) > id_n:
+                        val.pop(id_n)
+        #input('')
         self.frame = frame[min(data['left'][:1]):
-                           min(data['left'][:1])+max(data['width'][:1]),
+                           max(data['left'][:1])+max(data['width'][:1]),
                            min(data['top'][:1]):
-                           min(data['top'][1:])+max(data['height'][1:])]
+                           max(data['top'][1:])+max(data['height'][1:])]
+        #section_size_w = int[crop_frame.shape[1]/10]
+        #section_size_h = int[crop_frame.shape[0]/10]
+        #for section in range(10):
+        if isinstance(self.frame, np.ndarray) and len(self.frame) > 0:
+            cv2.imwrite(f'outputs/frames/f_{self.f_n}.png', self.frame)
+            self.crop_and_scale(data, self.frame)
+            self.f_n += 1
+            return True
+        return False
