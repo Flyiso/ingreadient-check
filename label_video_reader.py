@@ -138,6 +138,6 @@ class CollectFrames:
         Crop out the section of the image where text is found.
         """
         self.frame = frame[min(data['left'][:1]):
-                           min(data['left'][:1])+max(data['width'][:1]),
+                           max(data['left'][:1])+max(data['width'][:1]),
                            min(data['top'][:1]):
-                           min(data['top'][1:])+max(data['height'][1:])]
+                           max(data['top'][1:])+max(data['height'][1:])]
