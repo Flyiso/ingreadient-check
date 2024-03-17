@@ -6,6 +6,9 @@ outputs/
 save_stuff.py
 lbl_reader/
 
+# vs code settings
+.vscode
+
 # C extensions
 *.so
 
