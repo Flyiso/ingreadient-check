@@ -110,6 +110,9 @@ class ManageFrames:
         frames2 = []
         for frame in frames:
             frame_data = self.find_text(frame)
+            gs_f = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gs_f = cv2.GaussianBlur(gs_f, (3, 3), 0)
+            edges = cv2.Canny(gs_f, self.gs_threshold1, self.gs_threshold2)
             """matrix = cv2.getPerspectiveTransform(input_points,
                                                  output_points)
             warped_image = cv2.warpPerspective(frame,matrix,
@@ -119,7 +122,8 @@ class ManageFrames:
                 # Extract the bounding box coordinates
                 x, y, w, h = frame_data['left'][i], frame_data['top'][i], frame_data['width'][i], frame_data['height'][i]
                 # Draw a rectangle around the text region
-                frame = cv2.rectangle(frame, (x, y), (x + w, y + h),
+                frames = cv2.rectangle(frame, (x, y), (x + w, y + h),
                                       (0, 255, 0), 2)
-            frames2.append(frame)
+            frame = cv2.bitwise_and(frame, frame, edges)
+            frames2.append(edges)
         return frames2
