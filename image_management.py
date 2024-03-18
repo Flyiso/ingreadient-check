@@ -23,7 +23,6 @@ class ManageFrames:
         based on where most frame is found in
         input frame.
         """
-        #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame_data = self.find_text(frame)
         self.set_threshold_values(frame, frame_data)
 
@@ -35,7 +34,6 @@ class ManageFrames:
         """
         data = pt.image_to_data(frame, config=config,
                                 output_type='dict')
-
         return data
 
     def set_threshold_values(self, frame, frame_data: dict):
