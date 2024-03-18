@@ -11,11 +11,11 @@ class ManageFrames:
     """
     Does the requested operations on frame.
     """
-    def __init__(self) -> None:
+    def __init__(self, config: str) -> None:
         """
         Initializes the fame manager
         """
-        pass
+        self.config = config
 
     def set_manager_values(self, frame):
         """
@@ -26,14 +26,22 @@ class ManageFrames:
         frame_data = self.find_text(frame)
         self.set_threshold_values(frame, frame_data)
 
+    def process_frame(self, frame):
+        """"
+        Processes frame, prints information.
+        """
+        data = self.find_text(frame)
+        print(data['text'])
+        return data
+
     def find_text(self, frame,
-                  config: str = '--oem 3 --psm 6') -> dict:
+                  output_type: str = 'dict') -> dict:
         """
         Returns data dictionary of the text
         found in the frame.
         """
-        data = pt.image_to_data(frame, config=config,
-                                output_type='dict')
+        data = pt.image_to_data(frame, config=self.config,
+                                output_type=output_type)
         return data
 
     def set_threshold_values(self, frame, frame_data: dict):

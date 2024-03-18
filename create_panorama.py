@@ -5,7 +5,11 @@ from content saved by label reader.
 import cv2
 
 
-class CreatePanorama:
+class ManagePanorama:
+    """
+    class responsible for building panorama image of
+    output frames.
+    """
     def __init__(self, pan_group: int = 3) -> None:
         self.merge_size = pan_group
         self.stitcher = cv2.Stitcher.create()
@@ -17,21 +21,29 @@ class CreatePanorama:
         """
         activates merge for images.
         """
+        self.success = False
         self.waiting.append(panorama_image)
         self.all.append(panorama_image)
         print(len(self.waiting))
         if len(self.waiting) >= self.merge_size:
             self.stitch()
+        if self.success is True:
+            return self.stitched[-1]
+        return panorama_image
 
     def final_merge(self, final_img=None):
         """
-        merges final frames.
+        merges final frames
+        forces merge if  frames unmerged
         """
-        print(len(self.stitched))
+        self.success = False
         if final_img is not None:
             self.waiting.append(final_img)
         if len(self.waiting) > 1:
             self.stitch()
+        if self.success:
+            return self.stitched[-1]
+        return final_img
 
     def stitch(self):
         """
