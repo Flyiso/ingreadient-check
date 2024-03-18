@@ -40,8 +40,12 @@ class VideoFeed:
             ret, frame = self.capture.read()
             if not ret:
                 if last_frame is not None:
-                    last_merge = self.panorama_manager.final_merge(last_frame)
-                    self.save_image('final', last_merge)
+                    merged = self.panorama_manager.final_merge(last_frame)
+                    last_merge = merged[-1]
+                    self.save_image('merged', last_merge)
+                    frames_boxed = self.frame_manager.wrap_img(merged) # Update when wrap method is done
+                    for id, box in enumerate(frames_boxed):
+                        self.save_image(f'boxed_img_{id}', box)
                 break
 
             elif frame_n == 0:

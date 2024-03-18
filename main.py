@@ -13,7 +13,7 @@ def run_app(filepath):
                '--psm 6', '--psm 7', '--psm 8', '--psm 9', '--psm 10',
                '--psm 11', '--psm 12', '--psm 13']
     VideoFeed(video_path=filepath,
-              interval=20, merge_size=4,
+              interval=15, merge_size=3,
               adjust_h=0.5, adjust_w=0.5,
               config='--oem 3 --psm 6')
 

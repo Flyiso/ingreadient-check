@@ -31,7 +31,7 @@ class ManagePanorama:
             return self.stitched[-1]
         return panorama_image
 
-    def final_merge(self, final_img=None):
+    def final_merge(self, final_img=None) -> list:
         """
         merges final frames
         forces merge if  frames unmerged
@@ -42,7 +42,7 @@ class ManagePanorama:
         if len(self.waiting) > 1:
             self.stitch()
         if self.success:
-            return self.stitched[-1]
+            return self.stitched
         return final_img
 
     def stitch(self):
