@@ -5,9 +5,6 @@ merged images.
 import pytesseract as pt
 import numpy as np
 import cv2
-from skimage.segmentation import slic
-from skimage.data import astronaut
-from skimage.color import label2rgb
 
 
 class ManageFrames:
@@ -26,7 +23,7 @@ class ManageFrames:
         based on where most frame is found in
         input frame.
         """
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame_data = self.find_text(frame)
         self.set_threshold_values(frame, frame_data)
 
@@ -38,6 +35,7 @@ class ManageFrames:
         """
         data = pt.image_to_data(frame, config=config,
                                 output_type='dict')
+
         return data
 
     def set_threshold_values(self, frame, frame_data: dict):
@@ -50,28 +48,46 @@ class ManageFrames:
         img_h = int(np.mean(frame_data['height']))
         frame = frame[img_x:img_x+img_w,
                       img_y:img_y+img_h]
-        frame = cv2.GaussianBlur(frame, (7, 7), 0)
+        self.target_area = frame
+        self.hue_threshold1 = np.min(cv2.cvtColor(self.target_area,
+                                                  cv2.COLOR_BGR2HSV),
+                                     axis=(0, 1)).astype(int)
+        self.hue_threshold2 = np.max(cv2.cvtColor(self.target_area,
+                                                  cv2.COLOR_BGR2HSV),
+                                     axis=(0, 1)).astype(int)
+        print(self.hue_threshold1, self.hue_threshold2)
+        self.hue_threshold1[0] = int(self.hue_threshold1[0]*0.33)
+        self.hue_threshold2[0] = int(self.hue_threshold2[0]*1.33)
+        self.hue_threshold1[1] = int(self.hue_threshold1[1]*0.33)
+        self.hue_threshold2[1] = int(self.hue_threshold2[1]*1.33)
+        self.hue_threshold1[2] = int(self.hue_threshold1[2]*0.33)
+        self.hue_threshold2[2] = int(self.hue_threshold2[2]*1.33)
+        self.gs_threshold1 = int((np.min(cv2.cvtColor(self.target_area,
+                                                      cv2.COLOR_BGR2GRAY),
+                                         axis=(0, 1)).astype(int))*0.33)
+        self.gs_threshold2 = int(np.max(cv2.cvtColor(self.target_area,
+                                                     cv2.COLOR_BGR2GRAY),
+                                        axis=(0, 1)).astype(int)*1.33)
+        print(self.gs_threshold1, self.gs_threshold2)
 
-    def extract_foreground(self, frame):
-        frame_g = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(frame_g, 0, 255,
-                                    cv2.THRESH_BINARY_INV +
-                                    cv2.THRESH_OTSU)
-        kernel = np.ones((3, 3), np.uint8)
-        closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE,
-                                   kernel, iterations=2)
-
-        # Background area using Dilation 
-        bg = cv2.dilate(closing, kernel, iterations=1)
-
-        # Finding foreground area 
-        dist_transform = cv2.distanceTransform(closing, cv2.DIST_L2, 3)
-        ret, fg = cv2.threshold(dist_transform, 0.02
-                                * dist_transform.max(), 255, 0)
-        return fg
-
-    def segment_img_scikit(self, frame):
-        frame_seg = slic(frame,
-                         n_segments=2,
-                         compactness=10)
-        return frame_seg
+    def extract_roi(self, frame):
+        """"
+        extract roi from grayscale threshold and roi threshold
+        """
+        frame_p = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame_p = cv2.GaussianBlur(frame_p, (9, 9), 0)
+        ret, bin_img = cv2.threshold(frame_p,
+                                     self.gs_threshold1, self.gs_threshold2,
+                                     cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (11, 11))
+        bin_img = cv2.morphologyEx(bin_img,
+                                   cv2.MORPH_OPEN,
+                                   kernel,
+                                   iterations=1)
+        bg_mask = cv2.dilate(bin_img, kernel, iterations=8)
+        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        cl_mask = cv2.inRange(hsv_frame, self.hue_threshold1,
+                              self.hue_threshold2)
+        mask_full = cv2.bitwise_and(cl_mask, bg_mask)
+        result = cv2.bitwise_and(frame, frame, mask=mask_full)
+        return result

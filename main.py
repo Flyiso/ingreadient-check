@@ -1,5 +1,5 @@
 """
-Manages, runs and imports lbl readers modules.
+Manages, runs and imports glbl readers modules.
 """
 from label_video_reader import VideoFeed
 

@@ -2,7 +2,6 @@
 Management of video feed
 """
 import cv2
-import numpy as np
 from image_management import ManageFrames
 
 
@@ -29,6 +28,7 @@ class VideoFeed:
 
     def start_video(self):
         frame_n = 0
+        print('run...')
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
             ret, frame = self.capture.read()
@@ -40,8 +40,7 @@ class VideoFeed:
                 frame = cv2.resize(frame, (self.width, self.height))
             else:
                 frame = cv2.resize(frame, (self.width, self.height))
-                #frame = self.frame_manager.extract_foreground(frame)
-                frame = self.frame_manager.segment_img_scikit(frame)
+                frame = self.frame_manager.extract_roi(frame)
             cv2.imshow('frame', frame)
             if cv2.waitKey(25) & 0xFF == 27:
                 break
