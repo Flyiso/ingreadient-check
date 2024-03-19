@@ -2,6 +2,7 @@
 Manages, runs and imports readers modules.
 # TODO: enhance images. improve for better text recognition
 # TODO: adjust/make adaptable to other videos.
+# TODO: decide when to enhance text.
 """
 from label_video_reader import VideoFeed
 
