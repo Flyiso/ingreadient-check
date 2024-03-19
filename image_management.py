@@ -100,7 +100,7 @@ class ManageFrames:
         result = cv2.bitwise_and(frame, frame, mask=mask_full)
         return result
 
-    def wrap_img(self, frames: list):
+    def warp_img(self, frames: list):
         """
         tries to wrap the images to stitch them together.
         # TODO: detect corners of frame to wrap image/correct perspective.
@@ -109,21 +109,72 @@ class ManageFrames:
         """
         frames2 = []
         for frame in frames:
-            frame_data = self.find_text(frame)
             gs_f = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            gs_f = cv2.GaussianBlur(gs_f, (3, 3), 0)
-            edges = cv2.Canny(gs_f, self.gs_threshold1, self.gs_threshold2)
-            """matrix = cv2.getPerspectiveTransform(input_points,
-                                                 output_points)
-            warped_image = cv2.warpPerspective(frame,matrix,
-                                               (max_width, max_height),
-                                               flags = cv2.INTER_LINEAR)"""
-            for i in range(len(frame_data['text'])):
-                # Extract the bounding box coordinates
-                x, y, w, h = frame_data['left'][i], frame_data['top'][i], frame_data['width'][i], frame_data['height'][i]
-                # Draw a rectangle around the text region
-                frames = cv2.rectangle(frame, (x, y), (x + w, y + h),
-                                      (0, 255, 0), 2)
-            frame = cv2.bitwise_and(frame, frame, edges)
-            frames2.append(edges)
+            gs_f = cv2.GaussianBlur(gs_f, (9, 9), 0)
+            ret, thresh1 = cv2.threshold(gs_f, gs_f.mean(),
+                                         gs_f.max(),
+                                         cv2.THRESH_BINARY)
+            contours, hierarchy = cv2.findContours(thresh1,
+                                                   cv2.RETR_LIST,
+                                                   cv2.CHAIN_APPROX_SIMPLE)
+            blank_img = np.zeros((gs_f.shape[0],
+                                  gs_f.shape[1], 3),
+                                 dtype=np.int8)
+            contour_img = cv2.drawContours(blank_img, contours,
+                                           -1, (145, 19, 255), 2)
+            contour_max = max(contours, key=cv2.contourArea)
+            box = np.int0(cv2.boxPoints(cv2.minAreaRect(contour_max)))
+            cv2.drawContours(contour_img, [box], 0,
+                             (255, 255, 0), 2)
+            approx = self.get_approx_corners(contour_max)
+            cv2.drawContours(contour_img, [approx], 0, (0, 255, 0), 2)
+
+            # perspective transform stuff
+            points_1 = [list(val[0]) for val in approx]
+            width = max(point[0] for point in points_1)
+            height = max(point[1] for point in points_1)
+
+            points_1, points_2 = self.get_correction_matrix_values(points_1)
+
+            matrix = cv2.getPerspectiveTransform(np.float32(points_1),
+                                                 np.float32(points_2))
+
+            corrected = cv2.warpPerspective(frame, matrix,
+                                            (width, height),
+                                            flags=cv2.INTER_LINEAR)
+            frames2.append(corrected)
         return frames2
+
+    def get_correction_matrix_values(self, points_1: list) -> list:
+        """
+        attempts to create a matrix to match the length
+        and width/height of input matrix maximum values.
+        """
+        # top right, bottom right, bottom_left, top_left
+        if len(points_1) == 4:
+            points_2 = [[max(point[0] for point in points_1),
+                        min(point[1] for point in points_1)],
+                        [min(point[0] for point in points_1),
+                        min(point[1] for point in points_1)],
+                        [min(point[0] for point in points_1),
+                        max(point[1] for point in points_1)],
+                        [max(point[0] for point in points_1),
+                        max(point[1] for point in points_1)]]
+            return points_1, points_2
+
+    def get_approx_corners(self, contour):
+        """
+        Finds 4 corners in image.
+        tries different values until 4 corners are
+        found.
+        """
+        eps_vals = [0.005, 0.009,
+                    0.010, 0.015, 0.020, 0.025,
+                    0.030, 0.040, 0.050, 0.060,
+                    0.070, 0.080, 0.090, 0.100,
+                    0.300, 0.400, 0.500, 0.900]
+        for eps_val in eps_vals:
+            epsilon = eps_val * cv2.arcLength(contour, True)
+            approx = cv2.approxPolyDP(contour, epsilon, True)
+            if len(approx) == 4:
+                return approx

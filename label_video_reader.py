@@ -43,9 +43,9 @@ class VideoFeed:
                     merged = self.panorama_manager.final_merge(last_frame)
                     last_merge = merged[-1]
                     self.save_image('merged', last_merge)
-                    frames_boxed = self.frame_manager.wrap_img(merged) # Update when wrap method is done
-                    for id, box in enumerate(frames_boxed):
-                        self.save_image(f'boxed_img_{id}', box)
+                    frames_contours = self.frame_manager.warp_img(merged)  # Update when wrap method is done
+                    for id, img in enumerate(frames_contours):
+                        self.save_image(f'cotour_img_{id}', img)
                 break
 
             elif frame_n == 0:
