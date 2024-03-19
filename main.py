@@ -1,5 +1,7 @@
 """
-Manages, runs and imports glbl readers modules.
+Manages, runs and imports readers modules.
+# TODO: enhance images. improve for better text recognition
+# TODO: adjust/make adaptable to other videos.
 """
 from label_video_reader import VideoFeed
 

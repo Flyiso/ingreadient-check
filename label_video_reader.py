@@ -4,6 +4,7 @@ Management of video feed
 import cv2
 from image_management import ManageFrames
 from create_panorama import ManagePanorama
+import numpy as np
 
 
 class VideoFeed:
@@ -36,6 +37,7 @@ class VideoFeed:
         frame_n = 0
         last_frame = None
         panorama_images = []
+        self.final_frame = False
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
             ret, frame = self.capture.read()
@@ -56,6 +58,7 @@ class VideoFeed:
                         frames_contours)
                     if self.panorama_manager.success:
                         self.save_image('final_merge', final_merge)
+                        self.final_frame = final_merge
                 break
 
             elif frame_n == 0:
@@ -76,6 +79,9 @@ class VideoFeed:
                 break
         self.capture.release()
         cv2.destroyAllWindows()
+        if isinstance(self.final_frame, np.ndarray):
+            data = self.frame_manager.find_text(self.final_frame)
+            print(data['text'])
 
     def set_video_values(self, frame):
         """
