@@ -48,12 +48,10 @@ class VideoFeed:
                         frame = cv2.resize(frame, (self.width, self.height))
                         frame = self.frame_manager.extract_roi(frame)
                         roi_imgs.append(frame)
-                    frames_contours = self.frame_manager.warp_img(roi_imgs)  # Update when wrap method is done
-                    print('save wrapped images...')
+                    frames_contours = self.frame_manager.warp_img(roi_imgs)
                     for id, img in enumerate(frames_contours):
                         self.save_image(f'panorama_warped_{id}', img)
-                    print('final merge...')
-                    print(len(frames_contours))
+
                     final_merge = self.panorama_manager.add_images(
                         frames_contours)
                     if self.panorama_manager.success:
