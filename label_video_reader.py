@@ -8,8 +8,8 @@ from create_panorama import ManagePanorama
 
 class VideoFeed:
     def __init__(self, video_path: str | int = 0,
-                 interval: int = 20,
-                 merge_size: int = 5,
+                 interval: int = 15,
+                 merge_size: int = 2,
                  adjust_h: float = 1,
                  adjust_w: float = 1,
                  config: str = '--oem 3 --psm 6') -> None:
@@ -35,17 +35,29 @@ class VideoFeed:
     def start_video(self):
         frame_n = 0
         last_frame = None
+        panorama_images = []
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
             ret, frame = self.capture.read()
             if not ret:
                 if last_frame is not None:
                     merged = self.panorama_manager.final_merge(last_frame)
-                    last_merge = merged[-1]
-                    self.save_image('merged', last_merge)
-                    frames_contours = self.frame_manager.warp_img(merged)  # Update when wrap method is done
+                    self.save_image('merged', merged[-1])
+                    roi_imgs = []
+                    for frame in panorama_images:
+                        frame = cv2.resize(frame, (self.width, self.height))
+                        frame = self.frame_manager.extract_roi(frame)
+                        roi_imgs.append(frame)
+                    frames_contours = self.frame_manager.warp_img(roi_imgs)  # Update when wrap method is done
+                    print('save wrapped images...')
                     for id, img in enumerate(frames_contours):
-                        self.save_image(f'cotour_img_{id}', img)
+                        self.save_image(f'panorama_warped_{id}', img)
+                    print('final merge...')
+                    print(len(frames_contours))
+                    final_merge = self.panorama_manager.add_images(
+                        frames_contours)
+                    if self.panorama_manager.success:
+                        self.save_image('final_merge', final_merge)
                 break
 
             elif frame_n == 0:
@@ -58,6 +70,7 @@ class VideoFeed:
                 frame = self.panorama_manager.add_image(frame)
                 if self.panorama_manager.success:
                     self.save_image(f'stitched_panorama_{frame_n}', frame)
+                    panorama_images.append(frame)
             cv2.imshow('frame', frame)
             frame_n += 1
             last_frame = frame

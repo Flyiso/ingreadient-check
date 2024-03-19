@@ -31,6 +31,19 @@ class ManagePanorama:
             return self.stitched[-1]
         return panorama_image
 
+    def add_images(self, frames: list):
+        """
+        Merge together all input frames.
+        """
+        mem = self.waiting
+        self.waiting = frames
+        panorama = self.stitch()
+        self.waiting = mem
+        if self.success:
+            panorama = self.stitched[-1]
+            self.stitched.pop(-1)
+            return panorama
+
     def final_merge(self, final_img=None) -> list:
         """
         merges final frames
@@ -50,6 +63,8 @@ class ManagePanorama:
         stitches 2 images together and adds result to
         self.stitched
         """
+        for val in self.waiting:
+            print(val.shape)
         status, result = self.stitcher.stitch(self.waiting)
         if status != cv2.STITCHER_OK:
             print('Stitcher failed')

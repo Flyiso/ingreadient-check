@@ -2,6 +2,7 @@
 Manages and extracts data from
 merged images.
 """
+import statistics
 import pytesseract as pt
 import numpy as np
 import cv2
@@ -80,7 +81,7 @@ class ManageFrames:
 
     def extract_roi(self, frame):
         """"
-        extract roi from grayscale threshold and roi threshold
+        extract roi from grayscale threshold and hsv threshold
         """
         frame_p = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame_p = cv2.GaussianBlur(frame_p, (3, 3), 0)
@@ -100,11 +101,10 @@ class ManageFrames:
         result = cv2.bitwise_and(frame, frame, mask=mask_full)
         return result
 
-    def warp_img(self, frames: list):
+    def warp_img(self, frames: list) -> list:
         """
         tries to wrap the images to stitch them together.
         # TODO: detect corners of frame to wrap image/correct perspective.
-        # TODO: remove usage of Pytessreact / text detection method.
         # TODO: Return images with perspective wrapped correctly.
         """
         frames2 = []
@@ -117,17 +117,8 @@ class ManageFrames:
             contours, hierarchy = cv2.findContours(thresh1,
                                                    cv2.RETR_LIST,
                                                    cv2.CHAIN_APPROX_SIMPLE)
-            blank_img = np.zeros((gs_f.shape[0],
-                                  gs_f.shape[1], 3),
-                                 dtype=np.int8)
-            contour_img = cv2.drawContours(blank_img, contours,
-                                           -1, (145, 19, 255), 2)
             contour_max = max(contours, key=cv2.contourArea)
-            box = np.int0(cv2.boxPoints(cv2.minAreaRect(contour_max)))
-            cv2.drawContours(contour_img, [box], 0,
-                             (255, 255, 0), 2)
             approx = self.get_approx_corners(contour_max)
-            cv2.drawContours(contour_img, [approx], 0, (0, 255, 0), 2)
 
             # perspective transform stuff
             points_1 = [list(val[0]) for val in approx]
@@ -135,14 +126,15 @@ class ManageFrames:
             height = max(point[1] for point in points_1)
 
             points_1, points_2 = self.get_correction_matrix_values(points_1)
+            print(bool(points_1), bool(points_2))
+            if bool(points_1) is not False:
+                matrix = cv2.getPerspectiveTransform(np.float32(points_1),
+                                                     np.float32(points_2))
 
-            matrix = cv2.getPerspectiveTransform(np.float32(points_1),
-                                                 np.float32(points_2))
-
-            corrected = cv2.warpPerspective(frame, matrix,
-                                            (width, height),
-                                            flags=cv2.INTER_LINEAR)
-            frames2.append(corrected)
+                corrected = cv2.warpPerspective(frame, matrix,
+                                                (width, height),
+                                                flags=cv2.INTER_LINEAR)
+                frames2.append(corrected)
         return frames2
 
     def get_correction_matrix_values(self, points_1: list) -> list:
@@ -151,16 +143,30 @@ class ManageFrames:
         and width/height of input matrix maximum values.
         """
         # top right, bottom right, bottom_left, top_left
-        if len(points_1) == 4:
-            points_2 = [[max(point[0] for point in points_1),
-                        min(point[1] for point in points_1)],
-                        [min(point[0] for point in points_1),
-                        min(point[1] for point in points_1)],
-                        [min(point[0] for point in points_1),
-                        max(point[1] for point in points_1)],
-                        [max(point[0] for point in points_1),
-                        max(point[1] for point in points_1)]]
+        points_2 = [[max(point[0] for point in points_1),
+                    min(point[1] for point in points_1)],
+                    [min(point[0] for point in points_1),
+                    min(point[1] for point in points_1)],
+                    [min(point[0] for point in points_1),
+                    max(point[1] for point in points_1)],
+                    [max(point[0] for point in points_1),
+                    max(point[1] for point in points_1)]]
+        bottom_left, top_left, bottom_right, top_right = False, False, False, False
+        for pair in points_1:
+            if pair[0] >= statistics.median([val[0] for val in points_1]):
+                if pair[1] >= statistics.median([val[1] for val in points_1]):
+                    bottom_right = pair
+                else:
+                    top_right = pair
+            else:
+                if pair[1] <= statistics.median([val[1] for val in points_1]):
+                    bottom_left = pair
+                else:
+                    top_left = pair
+        points_1 = [top_right, bottom_left, top_left, bottom_right]
+        if all(points_1):
             return points_1, points_2
+        return False, False
 
     def get_approx_corners(self, contour):
         """
@@ -168,13 +174,13 @@ class ManageFrames:
         tries different values until 4 corners are
         found.
         """
-        eps_vals = [0.005, 0.009,
-                    0.010, 0.015, 0.020, 0.025,
-                    0.030, 0.040, 0.050, 0.060,
-                    0.070, 0.080, 0.090, 0.100,
-                    0.300, 0.400, 0.500, 0.900]
+        eps_vals = [0.9, 0.5, 0.4, 0.3, 0.1,
+                    0.09, 0.08, 0.07, 0.06,
+                    0.05, 0.04, 0.025, 0.030,
+                    0.02, 0.015, 0.01, 0.009, 0.005]
         for eps_val in eps_vals:
             epsilon = eps_val * cv2.arcLength(contour, True)
             approx = cv2.approxPolyDP(contour, epsilon, True)
             if len(approx) == 4:
+                print(eps_val)
                 return approx
