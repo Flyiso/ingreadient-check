@@ -121,13 +121,15 @@ class ManageFrames:
             approx = self.get_approx_corners(contour_max)
 
             # perspective transform stuff
-            points_1 = [list(val[0]) for val in approx]
-            width = max(point[0] for point in points_1)
-            height = max(point[1] for point in points_1)
+            if isinstance(approx, int | float):
+                points_1 = [list(val[0]) for val in approx]
+                width = max(point[0] for point in points_1)
+                height = max(point[1] for point in points_1)
+                points_1, points_2 = self.get_correction_matrix_values(points_1)
+            else:
+                points_1 = False
 
-            points_1, points_2 = self.get_correction_matrix_values(points_1)
-            print(bool(points_1), bool(points_2))
-            if bool(points_1) is not False:
+            if isinstance(approx, int | float) and bool(points_1) is True:
                 matrix = cv2.getPerspectiveTransform(np.float32(points_1),
                                                      np.float32(points_2))
 
@@ -184,3 +186,21 @@ class ManageFrames:
             if len(approx) == 4:
                 print(eps_val)
                 return approx
+
+    def enhance_text(self, frame):
+        """
+        Make text more readable
+        """
+        # this did not work.
+        bf_gray = cv2.GaussianBlur(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY),
+                                   (7, 7), 0)
+        thresh = cv2.adaptiveThreshold(bf_gray, 255,
+                                       cv2.ADAPTIVE_THRESH_MEAN_C,
+                                       cv2.THRESH_BINARY_INV, 7, 2)
+        contours, hir = cv2.findContours(thresh, mode=cv2.RETR_EXTERNAL,
+                                         method=cv2.CHAIN_APPROX_NONE)
+
+        contours = sorted(contours, key=cv2.contourArea, reverse=True)
+        cv2.drawContours(frame, contours=contours[2:], contourIdx=-1,
+                         color=(255, 255, 0), thickness=2)
+        return frame

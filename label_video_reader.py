@@ -43,6 +43,7 @@ class VideoFeed:
             ret, frame = self.capture.read()
             if not ret:
                 if last_frame is not None:
+                    print('attempting last merge...')
                     merged = self.panorama_manager.final_merge(last_frame)
                     self.save_image('merged', merged[-1])
                     roi_imgs = []
@@ -70,6 +71,7 @@ class VideoFeed:
             if frame_n % self.interval == 0:
                 frame = self.panorama_manager.add_image(frame)
                 if self.panorama_manager.success:
+                    frame = self.frame_manager.enhance_text(frame)
                     self.save_image(f'stitched_panorama_{frame_n}', frame)
                     panorama_images.append(frame)
             cv2.imshow('frame', frame)
