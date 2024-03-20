@@ -82,6 +82,8 @@ class ManageFrames:
     def extract_roi(self, frame):
         """"
         extract roi from grayscale threshold and hsv threshold
+        separates roi by hue and binary threshold
+        Return extracted roi
         """
         frame_p = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame_p = cv2.GaussianBlur(frame_p, (3, 3), 0)
@@ -104,8 +106,10 @@ class ManageFrames:
     def warp_img(self, frames: list) -> list:
         """
         tries to wrap the images to stitch them together.
-        # TODO: detect corners of frame to wrap image/correct perspective.
-        # TODO: Return images with perspective wrapped correctly.
+        parameters:
+            frames(lst): list of frames to warp.
+        output:
+            lift of frames transformed to match perspective
         """
         print('wrap images..?')
         frames2 = []

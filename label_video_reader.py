@@ -44,21 +44,25 @@ class VideoFeed:
             if not ret:
                 if last_frame is not None:
                     print('attempting last merge...')
-                    roi_imgs = []
-                    for frame in panorama_images:
+                    frames = []
+                    for num, frame in enumerate(panorama_images):
+                        frame = self.frame_manager.extract_roi(frame)
                         frame = self.frame_manager.enhance_text_lightness(
                             frame)
-                        frame = self.frame_manager.extract_roi(frame)
                         frame = cv2.resize(frame, (self.width, self.height))
-                        roi_imgs.append(frame)
-                    frames_warped = self.frame_manager.warp_img(roi_imgs)
-                    for id, img in enumerate(frames_warped):
-                        self.save_image(f'panorama_warped_{id}', img)
-
-                    final_merge = self.panorama_manager.add_images(frames_warped)
-                    if self.panorama_manager.success:
-                        self.save_image('final_merge', final_merge)
-                        self.final_frame = final_merge
+                        frames.append(frame)
+                        self.save_image(f'merged_frame_prep_{num}', frame)
+                        if len(frames) >= 2:
+                            merged = self.panorama_manager.add_images(frames)
+                            if self.panorama_manager.success:
+                                merged = self.frame_manager.
+                                frames = [merged]
+                                self.save_image(
+                                    f'fin_mrg_{num}_of_{len(panorama_images)}',
+                                    merged)
+                    if len(frames) == 1:
+                        self.save_image('final_frame', frames[0])
+                        self.final_frame = frames[0]
                 break
 
             elif frame_n == 0:
