@@ -107,6 +107,7 @@ class ManageFrames:
         # TODO: detect corners of frame to wrap image/correct perspective.
         # TODO: Return images with perspective wrapped correctly.
         """
+        print('wrap images..?')
         frames2 = []
         for frame in frames:
             gs_f = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -121,15 +122,16 @@ class ManageFrames:
             approx = self.get_approx_corners(contour_max)
 
             # perspective transform stuff
-            if isinstance(approx, int | float):
+            if isinstance(approx, np.ndarray):
                 points_1 = [list(val[0]) for val in approx]
                 width = max(point[0] for point in points_1)
                 height = max(point[1] for point in points_1)
-                points_1, points_2 = self.get_correction_matrix_values(points_1)
+                points_1, points_2 = self.get_correction_matrix_values(
+                    points_1)
             else:
                 points_1 = False
 
-            if isinstance(approx, int | float) and bool(points_1) is True:
+            if isinstance(approx, np.ndarray) and bool(points_1) is True:
                 matrix = cv2.getPerspectiveTransform(np.float32(points_1),
                                                      np.float32(points_2))
 
@@ -153,7 +155,8 @@ class ManageFrames:
                     max(point[1] for point in points_1)],
                     [max(point[0] for point in points_1),
                     max(point[1] for point in points_1)]]
-        bottom_left, top_left, bottom_right, top_right = False, False, False, False
+        bottom_left, top_left, bottom_right, top_right = [False, False,
+                                                          False, False]
         for pair in points_1:
             if pair[0] >= statistics.median([val[0] for val in points_1]):
                 if pair[1] >= statistics.median([val[1] for val in points_1]):
@@ -187,20 +190,71 @@ class ManageFrames:
                 print(eps_val)
                 return approx
 
-    def enhance_text(self, frame):
+    def enhance_text_lightness(self, frame):
         """
-        Make text more readable
+        Enhance text by perceptual lightness
         """
-        # this did not work.
-        bf_gray = cv2.GaussianBlur(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY),
-                                   (7, 7), 0)
-        thresh = cv2.adaptiveThreshold(bf_gray, 255,
-                                       cv2.ADAPTIVE_THRESH_MEAN_C,
-                                       cv2.THRESH_BINARY_INV, 7, 2)
-        contours, hir = cv2.findContours(thresh, mode=cv2.RETR_EXTERNAL,
-                                         method=cv2.CHAIN_APPROX_NONE)
+        # CLAHE:
+        frame2 = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        clahe = cv2.createCLAHE(clipLimit=1.7, tileGridSize=(5, 5))
+        frame_planes = list(cv2.split(frame2))
+        frame_planes[0] = clahe.apply(frame_planes[0])
+        frame2 = cv2.merge(frame_planes)
+        frame2 = cv2.cvtColor(frame2, cv2.COLOR_LAB2BGR)
+        return frame2
 
-        contours = sorted(contours, key=cv2.contourArea, reverse=True)
-        cv2.drawContours(frame, contours=contours[2:], contourIdx=-1,
-                         color=(255, 255, 0), thickness=2)
-        return frame
+
+# NOTES/ SAVE METHODS
+# BILATERAL FILTER (parameter values):
+# 1 pixel neighborhood size
+# 2 sigmaColor(how similar colors need to be to mix together)
+# 3 distance of pixels mixed together(within sigma values)
+"""bf_gray = cv2.bilateralFilter(cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY),
+                                5, 9, 77)
+"""
+# THRESHOLDS- ADAPTIVE
+# 1 max value (up to 255)
+# 2 adaptive method:
+#   a) cv.ADAPTIVE_THRESH_MEAN_C:
+#      The threshold value is the mean of the
+#      neighborhood area minus the constant C.
+#   b) cv.ADAPTIVE_THRESH_GAUSSIAN_C
+#      The threshold value is a gaussian-weighted sum
+#      of the neighborhood values minus the constant C
+# 3 threshold type
+# 4 block_size(odd int?)/neighborhood size
+# 5 C- a constant subtracted from mean or weighted sum of neigh. px.
+
+# THRESHOLDS- OTSUS BINARIZATION:
+# 1 thresh
+# 2 maxval
+# 3 type
+# 4 dist
+"""thresh, img = cv2.threshold(bf_gray,
+                            self.gs_threshold1, 255,
+                            cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)"""
+# CONTOURS
+# 1 mode:
+#   a) cv2.RETR_EXTERNAL-
+#       retrieve extreme outer contours
+#   b) cv2.RETR_LIST-
+#       retrieves all contours without hierarchy
+#   c) cv2.RETR_CCOMP-
+#       retrieves all contours. organizes in 2-level hierarchy.
+#           1- external boundaries, contours inside 2.
+#           2- contours inside external
+#   d) cv2.RETR_TREE:
+#       all contours, in full hierarchy of nested contours.
+# 2 Method:
+#   a) cv2.CHAIN_APPROX_NONE-
+#       store all boundary points.
+#   b) cv2.CHAIN_APPROX_SIMPLE-
+#       store ends of boundary points representing a line. saves memory
+"""contours, hir = cv2.findContours(img, mode=cv2.RETR_TREE,
+                                    method=cv2.CHAIN_APPROX_SIMPLE)"""
+# DRAW ON FRAME
+"""for num,  contour in enumerate(contours):
+    if hir[0][num][0] != -1 | np.max(hir):
+        frame = cv2.drawContours(frame2, contours=[contour],
+                                    contourIdx=0,
+                                    color=(255, 255, 0), thickness=2)"""

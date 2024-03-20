@@ -44,19 +44,18 @@ class VideoFeed:
             if not ret:
                 if last_frame is not None:
                     print('attempting last merge...')
-                    merged = self.panorama_manager.final_merge(last_frame)
-                    self.save_image('merged', merged[-1])
                     roi_imgs = []
                     for frame in panorama_images:
-                        frame = cv2.resize(frame, (self.width, self.height))
+                        frame = self.frame_manager.enhance_text_lightness(
+                            frame)
                         frame = self.frame_manager.extract_roi(frame)
+                        frame = cv2.resize(frame, (self.width, self.height))
                         roi_imgs.append(frame)
-                    frames_contours = self.frame_manager.warp_img(roi_imgs)
-                    for id, img in enumerate(frames_contours):
+                    frames_warped = self.frame_manager.warp_img(roi_imgs)
+                    for id, img in enumerate(frames_warped):
                         self.save_image(f'panorama_warped_{id}', img)
 
-                    final_merge = self.panorama_manager.add_images(
-                        frames_contours)
+                    final_merge = self.panorama_manager.add_images(frames_warped)
                     if self.panorama_manager.success:
                         self.save_image('final_merge', final_merge)
                         self.final_frame = final_merge
@@ -67,11 +66,11 @@ class VideoFeed:
                 frame = cv2.resize(frame, (self.width, self.height))
             else:
                 frame = cv2.resize(frame, (self.width, self.height))
+                frame = self.frame_manager.enhance_text_lightness(frame)
                 frame = self.frame_manager.extract_roi(frame)
             if frame_n % self.interval == 0:
                 frame = self.panorama_manager.add_image(frame)
                 if self.panorama_manager.success:
-                    frame = self.frame_manager.enhance_text(frame)
                     self.save_image(f'stitched_panorama_{frame_n}', frame)
                     panorama_images.append(frame)
             cv2.imshow('frame', frame)
