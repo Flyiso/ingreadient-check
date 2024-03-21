@@ -143,6 +143,8 @@ class ManageFrames:
                                                 (width, height),
                                                 flags=cv2.INTER_LINEAR)
                 frames2.append(corrected)
+            else:
+                frames2.append(frame)
         return frames2
 
     def get_correction_matrix_values(self, points_1: list) -> list:

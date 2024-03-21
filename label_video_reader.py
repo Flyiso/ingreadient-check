@@ -46,23 +46,36 @@ class VideoFeed:
                     print('attempting last merge...')
                     frames = []
                     for num, frame in enumerate(panorama_images):
-                        frame = self.frame_manager.extract_roi(frame)
                         frame = self.frame_manager.enhance_text_lightness(
                             frame)
+                        frame = self.frame_manager.extract_roi(frame)
                         frame = cv2.resize(frame, (self.width, self.height))
                         frames.append(frame)
                         self.save_image(f'merged_frame_prep_{num}', frame)
                         if len(frames) >= 2:
                             merged = self.panorama_manager.add_images(frames)
                             if self.panorama_manager.success:
-                                merged = self.frame_manager.
-                                frames = [merged]
+                                merged = cv2.resize(merged,
+                                                    (self.width, self.height))
+                                merged = self.frame_manager.extract_roi(merged)
+                                merged = self.frame_manager.warp_img([merged])
+                                print(len(merged))
+                                frames = merged
                                 self.save_image(
                                     f'fin_mrg_{num}_of_{len(panorama_images)}',
-                                    merged)
+                                    merged[0])
                     if len(frames) == 1:
+                        print('MERGED LAST TWO FRAMES')
                         self.save_image('final_frame', frames[0])
                         self.final_frame = frames[0]
+                    elif len(frames) == 0:
+                        print('???')
+                    elif len(frames) <= 8:
+                        print('Attempt eMERGEncy merge...')
+                        print(len(frames))
+                        frames = self.frame_manager.warp_img(frames)
+                        frames = self.panorama_manager.add_images(frames)
+
                 break
 
             elif frame_n == 0:

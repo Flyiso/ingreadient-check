@@ -36,7 +36,8 @@ class ManagePanorama:
         Merge together all input frames.
         """
         mem = self.waiting
-        self.waiting = frames
+        self.waiting = [frame for frame in frames
+                        if len(frame.shape) == 3]
         panorama = self.stitch()
         self.waiting = mem
         if self.success:
