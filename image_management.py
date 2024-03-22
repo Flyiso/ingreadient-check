@@ -90,17 +90,28 @@ class ManageFrames:
         ret, bin_img = cv2.threshold(frame_p,
                                      self.gs_threshold1, self.gs_threshold2,
                                      cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (11, 11))
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8)) #11 11
         bin_img = cv2.morphologyEx(bin_img,
                                    cv2.MORPH_OPEN,
                                    kernel,
                                    iterations=1)
-        bg_mask = cv2.dilate(bin_img, kernel, iterations=8)
+        bg_mask = cv2.dilate(bin_img, kernel, iterations=9)#8
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         cl_mask = cv2.inRange(hsv_frame, self.hue_threshold1,
                               self.hue_threshold2)
         mask_full = cv2.bitwise_and(cl_mask, bg_mask)
         result = cv2.bitwise_and(frame, frame, mask=mask_full)
+        inverted_mask = np.invert(mask_full)
+        contours, hierarchy = cv2.findContours(mask_full,
+                                               cv2.RETR_EXTERNAL,
+                                               cv2.CHAIN_APPROX_SIMPLE)
+        contour_max = max(contours, key=cv2.contourArea)
+        contour_rect = cv2.minAreaRect(contour_max)
+        x, y, width, height = cv2.boundingRect(contour_max)
+        box = cv2.boxPoints(contour_rect)
+        box = np.int0(box)
+        result = cv2.drawContours(result, [box], 0, (255, 2, 222), 2)
+        result = cv2.rectangle(result, (x, y), (x+width, y+height), (0, 255, 255), 2)
         return result
 
     def warp_img(self, frames: list) -> list:
@@ -142,6 +153,9 @@ class ManageFrames:
                 corrected = cv2.warpPerspective(frame, matrix,
                                                 (width, height),
                                                 flags=cv2.INTER_LINEAR)
+                for point in points_1:
+                    corrected = cv2.circle(frame, point, 5, (255, 22, 255), -1)
+                
                 frames2.append(corrected)
             else:
                 frames2.append(frame)
