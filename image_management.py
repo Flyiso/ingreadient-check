@@ -112,6 +112,7 @@ class ManageFrames:
         box = np.int0(box)
         result = cv2.drawContours(result, [box], 0, (255, 2, 222), 2)
         result = cv2.rectangle(result, (x, y), (x+width, y+height), (0, 255, 255), 2)
+        
         return result
 
     def warp_img(self, frames: list) -> list:
@@ -155,7 +156,7 @@ class ManageFrames:
                                                 flags=cv2.INTER_LINEAR)
                 for point in points_1:
                     corrected = cv2.circle(frame, point, 5, (255, 22, 255), -1)
-                
+
                 frames2.append(corrected)
             else:
                 frames2.append(frame)
@@ -193,6 +194,12 @@ class ManageFrames:
             return points_1, points_2
         return False, False
 
+    def detect_text_direction(self, frame):
+        """
+        ties to find the direction of the text.
+        """
+        pass
+
     def get_approx_corners(self, contour):
         """
         Finds 4 corners in image.
@@ -223,58 +230,3 @@ class ManageFrames:
         frame2 = cv2.cvtColor(frame2, cv2.COLOR_LAB2BGR)
         return frame2
 
-
-# NOTES/ SAVE METHODS
-# BILATERAL FILTER (parameter values):
-# 1 pixel neighborhood size
-# 2 sigmaColor(how similar colors need to be to mix together)
-# 3 distance of pixels mixed together(within sigma values)
-"""bf_gray = cv2.bilateralFilter(cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY),
-                                5, 9, 77)
-"""
-# THRESHOLDS- ADAPTIVE
-# 1 max value (up to 255)
-# 2 adaptive method:
-#   a) cv.ADAPTIVE_THRESH_MEAN_C:
-#      The threshold value is the mean of the
-#      neighborhood area minus the constant C.
-#   b) cv.ADAPTIVE_THRESH_GAUSSIAN_C
-#      The threshold value is a gaussian-weighted sum
-#      of the neighborhood values minus the constant C
-# 3 threshold type
-# 4 block_size(odd int?)/neighborhood size
-# 5 C- a constant subtracted from mean or weighted sum of neigh. px.
-
-# THRESHOLDS- OTSUS BINARIZATION:
-# 1 thresh
-# 2 maxval
-# 3 type
-# 4 dist
-"""thresh, img = cv2.threshold(bf_gray,
-                            self.gs_threshold1, 255,
-                            cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)"""
-# CONTOURS
-# 1 mode:
-#   a) cv2.RETR_EXTERNAL-
-#       retrieve extreme outer contours
-#   b) cv2.RETR_LIST-
-#       retrieves all contours without hierarchy
-#   c) cv2.RETR_CCOMP-
-#       retrieves all contours. organizes in 2-level hierarchy.
-#           1- external boundaries, contours inside 2.
-#           2- contours inside external
-#   d) cv2.RETR_TREE:
-#       all contours, in full hierarchy of nested contours.
-# 2 Method:
-#   a) cv2.CHAIN_APPROX_NONE-
-#       store all boundary points.
-#   b) cv2.CHAIN_APPROX_SIMPLE-
-#       store ends of boundary points representing a line. saves memory
-"""contours, hir = cv2.findContours(img, mode=cv2.RETR_TREE,
-                                    method=cv2.CHAIN_APPROX_SIMPLE)"""
-# DRAW ON FRAME
-"""for num,  contour in enumerate(contours):
-    if hir[0][num][0] != -1 | np.max(hir):
-        frame = cv2.drawContours(frame2, contours=[contour],
-                                    contourIdx=0,
-                                    color=(255, 255, 0), thickness=2)"""
