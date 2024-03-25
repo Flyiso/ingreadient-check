@@ -6,6 +6,8 @@ import statistics
 import pytesseract as pt
 import numpy as np
 import cv2
+import sys
+import math
 
 
 class ManageFrames:
@@ -100,19 +102,17 @@ class ManageFrames:
         cl_mask = cv2.inRange(hsv_frame, self.hue_threshold1,
                               self.hue_threshold2)
         mask_full = cv2.bitwise_and(cl_mask, bg_mask)
-        result = cv2.bitwise_and(frame, frame, mask=mask_full)
-        inverted_mask = np.invert(mask_full)
         contours, hierarchy = cv2.findContours(mask_full,
                                                cv2.RETR_EXTERNAL,
                                                cv2.CHAIN_APPROX_SIMPLE)
         contour_max = max(contours, key=cv2.contourArea)
         contour_rect = cv2.minAreaRect(contour_max)
-        x, y, width, height = cv2.boundingRect(contour_max)
         box = cv2.boxPoints(contour_rect)
         box = np.int0(box)
-        result = cv2.drawContours(result, [box], 0, (255, 2, 222), 2)
-        result = cv2.rectangle(result, (x, y), (x+width, y+height), (0, 255, 255), 2)
-        
+        mask = np.zeros_like(frame_p)
+        cv2.drawContours(mask, [box], 0, (255), -1)
+        mask_full = cv2.bitwise_and(mask_full, mask)
+        result = cv2.bitwise_and(frame, frame, mask=mask_full)
         return result
 
     def warp_img(self, frames: list) -> list:
@@ -127,7 +127,8 @@ class ManageFrames:
         frames2 = []
         for frame in frames:
             gs_f = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            gs_f = cv2.GaussianBlur(gs_f, (9, 9), 0)
+            #gs_f = self.detect_text_direction(gs_f)
+            #gs_f = cv2.GaussianBlur(gs_f, (9, 9), 0)
             ret, thresh1 = cv2.threshold(gs_f, gs_f.mean(),
                                          gs_f.max(),
                                          cv2.THRESH_BINARY)
@@ -198,7 +199,22 @@ class ManageFrames:
         """
         ties to find the direction of the text.
         """
-        pass
+        frame_g = cv2.GaussianBlur(frame, (15, 5), 1)
+        frame_g = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        edges = cv2.Canny(frame_g,
+                          self.gs_threshold1, self.gs_threshold2,
+                          None, 3)
+
+        lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=150,
+                                minLineLength=100, maxLineGap=10)
+        if lines is not None:
+            for line in lines:
+                x1, y1, x2, y2 = line[0]
+                if abs(y2 - y1) > 0:
+                    slope = (x2 - x1) / (y2 - y1)
+                    if abs(slope) > 20:
+                        cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 1)
+        return frame
 
     def get_approx_corners(self, contour):
         """
@@ -229,4 +245,3 @@ class ManageFrames:
         frame2 = cv2.merge(frame_planes)
         frame2 = cv2.cvtColor(frame2, cv2.COLOR_LAB2BGR)
         return frame2
-
