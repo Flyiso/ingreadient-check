@@ -204,17 +204,54 @@ class ManageFrames:
         edges = cv2.Canny(frame_g,
                           self.gs_threshold1, self.gs_threshold2,
                           None, 3)
+        corr_lines = []
 
-        lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=150,
-                                minLineLength=100, maxLineGap=10)
+        lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=100,
+                                minLineLength=100, maxLineGap=5)
         if lines is not None:
             for line in lines:
                 x1, y1, x2, y2 = line[0]
                 if abs(y2 - y1) > 0:
                     slope = (x2 - x1) / (y2 - y1)
-                    if abs(slope) > 20:
-                        cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 1)
+                    if abs(slope) >= 0.95:
+                        corr_lines.append(slope)
+        if len(corr_lines) >= 5:
+            frame = self.rotate_image_by_lines(frame, corr_lines)
         return frame
+
+    def draw_direction_lines(self, frame):
+        """
+        ties to find the direction of the text.
+        """
+        frame_g = cv2.GaussianBlur(frame, (9, 9), 1)
+        frame_g = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        edges = cv2.Canny(frame_g,
+                          self.gs_threshold1, self.gs_threshold2,
+                          None, 3)
+
+        lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=100,
+                                minLineLength=100, maxLineGap=5)
+        if lines is not None:
+            for line in lines:
+                x1, y1, x2, y2 = line[0]
+                if abs(y2 - y1) > 0:
+                    slope = (x2 - x1) / (y2 - y1)
+                    if abs(slope) >= 1:
+                        frame = cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        return frame
+
+    def rotate_image_by_lines(self, frame, line_slopes):
+        """
+        calculates the median slope and rotates image accordingly.
+        """
+        angle = np.median(line_slopes)
+        angle = (np.arctan(angle) / np.pi)
+        height, width = frame.shape[:2]
+        rotation_matrix = cv2.getRotationMatrix2D((width / 2, height / 2),
+                                                  angle, 1)
+        rotated_image = cv2.warpAffine(frame, rotation_matrix, (width, height),
+                                       flags=cv2.INTER_LINEAR)
+        return rotated_image
 
     def get_approx_corners(self, contour):
         """

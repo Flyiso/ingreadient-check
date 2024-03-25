@@ -46,26 +46,28 @@ class VideoFeed:
                     print('attempting last merge...')
                     frames = []
                     for num, frame in enumerate(panorama_images):
-                        frame = self.frame_manager.enhance_text_lightness(
-                            frame)
+                        #frame = self.frame_manager.enhance_text_lightness(
+                        #   frame)
                         frame = self.frame_manager.extract_roi(frame)
+                        frame = self.frame_manager.detect_text_direction(frame)
                         frame = cv2.resize(frame, (self.width, self.height))
                         frames.append(frame)
                         self.save_image(f'merged_frame_prep_{num}', frame)
-                        if len(frames) >= 2:
+                        if len(frames) >= self.merge_size:
                             merged = self.panorama_manager.add_images(frames)
                             if self.panorama_manager.success:
+                                merged = self.frame_manager.detect_text_direction(merged)
                                 merged = cv2.resize(merged,
                                                     (self.width, self.height))
                                 merged = self.frame_manager.extract_roi(merged)
-                                merged = self.frame_manager.warp_img([merged])
-                                print(len(merged))
-                                frames = merged
+                                #merged = self.frame_manager.warp_img([merged])
+                                merged = self.frame_manager.draw_direction_lines(merged)
+                                frames = [merged]
                                 self.save_image(
                                     f'fin_mrg_{num}_of_{len(panorama_images)}',
-                                    merged[0])
+                                    merged)
                     if len(frames) == 1:
-                        print('MERGED LAST TWO FRAMES')
+                        print(f'MERGED LAST {self.merge_size} FRAMES')
                         self.save_image('final_frame', frames[0])
                         self.final_frame = frames[0]
                     elif len(frames) == 0:
@@ -89,6 +91,7 @@ class VideoFeed:
             if frame_n % self.interval == 0:
                 frame = self.panorama_manager.add_image(frame)
                 if self.panorama_manager.success:
+                    frame = self.frame_manager.detect_text_direction(frame)
                     self.save_image(f'stitched_panorama_{frame_n}', frame)
                     panorama_images.append(frame)
             cv2.imshow('frame', frame)
