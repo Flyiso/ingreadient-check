@@ -11,6 +11,9 @@ Manages, runs and imports readers modules.
 # TODO: Stretch/warp image from lines and angles in rotate_image_by_line
 #       (blur, lower criteria for detection, correct curved
 #       result to straight lines?)
+# TODO: some images look good, except seeming to have higher
+#       transparency, make all of the image fully opaque(adaptive threshold?)
+#       and remove shine
         """
 from label_video_reader import VideoFeed
 
