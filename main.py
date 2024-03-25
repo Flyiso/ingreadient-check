@@ -1,6 +1,5 @@
 """
 Manages, runs and imports readers modules.
-# TODO: enhance images. improve for better text recognition
 # TODO: adjust/make adaptable to other videos.
 # TODO: make frame/image edit class more consistent/easy to use.
 # TODO: Update frame merging steps to better manage frame merging failures.

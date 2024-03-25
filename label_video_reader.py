@@ -46,7 +46,7 @@ class VideoFeed:
                     print('attempting last merge...')
                     frames = []
                     for num, frame in enumerate(panorama_images):
-                        #frame = self.frame_manager.enhance_text_lightness(
+                        # frame = self.frame_manager.enhance_text_lightness(
                         #   frame)
                         frame = self.frame_manager.extract_roi(frame)
                         frame = self.frame_manager.detect_text_direction(frame)
@@ -56,12 +56,17 @@ class VideoFeed:
                         if len(frames) >= self.merge_size:
                             merged = self.panorama_manager.add_images(frames)
                             if self.panorama_manager.success:
-                                merged = self.frame_manager.detect_text_direction(merged)
+                                merged = \
+                                    self.frame_manager.detect_text_direction(
+                                        merged)
                                 merged = cv2.resize(merged,
                                                     (self.width, self.height))
                                 merged = self.frame_manager.extract_roi(merged)
-                                #merged = self.frame_manager.warp_img([merged])
-                                merged = self.frame_manager.draw_direction_lines(merged)
+                                # merged = \
+                                #     self.frame_manager.warp_img([merged])
+                                merged = \
+                                    self.frame_manager.draw_direction_lines(
+                                        merged)
                                 frames = [merged]
                                 self.save_image(
                                     f'fin_mrg_{num}_of_{len(panorama_images)}',

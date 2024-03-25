@@ -6,8 +6,6 @@ import statistics
 import pytesseract as pt
 import numpy as np
 import cv2
-import sys
-import math
 
 
 class ManageFrames:
@@ -92,12 +90,12 @@ class ManageFrames:
         ret, bin_img = cv2.threshold(frame_p,
                                      self.gs_threshold1, self.gs_threshold2,
                                      cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8)) #11 11
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8))  # 11 11
         bin_img = cv2.morphologyEx(bin_img,
                                    cv2.MORPH_OPEN,
                                    kernel,
                                    iterations=1)
-        bg_mask = cv2.dilate(bin_img, kernel, iterations=9)#8
+        bg_mask = cv2.dilate(bin_img, kernel, iterations=9)
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         cl_mask = cv2.inRange(hsv_frame, self.hue_threshold1,
                               self.hue_threshold2)
@@ -127,8 +125,8 @@ class ManageFrames:
         frames2 = []
         for frame in frames:
             gs_f = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            #gs_f = self.detect_text_direction(gs_f)
-            #gs_f = cv2.GaussianBlur(gs_f, (9, 9), 0)
+            #  gs_f = self.detect_text_direction(gs_f)
+            #  gs_f = cv2.GaussianBlur(gs_f, (9, 9), 0)
             ret, thresh1 = cv2.threshold(gs_f, gs_f.mean(),
                                          gs_f.max(),
                                          cv2.THRESH_BINARY)
@@ -223,21 +221,24 @@ class ManageFrames:
         """
         ties to find the direction of the text.
         """
-        frame_g = cv2.GaussianBlur(frame, (9, 9), 1)
+        frame_g = cv2.GaussianBlur(frame, (9, 5), 1)
         frame_g = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         edges = cv2.Canny(frame_g,
                           self.gs_threshold1, self.gs_threshold2,
                           None, 3)
 
-        lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=100,
-                                minLineLength=100, maxLineGap=5)
+        lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=50,
+                                minLineLength=30, maxLineGap=5)
         if lines is not None:
             for line in lines:
                 x1, y1, x2, y2 = line[0]
                 if abs(y2 - y1) > 0:
                     slope = (x2 - x1) / (y2 - y1)
-                    if abs(slope) >= 1:
-                        frame = cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                    if abs(slope) >= 0.9:
+                        frame = cv2.line(frame, (x1, y1), (x2, y2),
+                                         (0, 0, 255), 2)
+        else:
+            print('no lines.')
         return frame
 
     def rotate_image_by_lines(self, frame, line_slopes):
