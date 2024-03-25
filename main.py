@@ -6,11 +6,13 @@ Manages, runs and imports readers modules.
 # TODO: Update frame merging steps to better manage frame merging failures.
 
 # TODO: decide when to enhance text.
-# TODO: Save line information(lmage_managmement/ManageFrames/
-        detect_text_direction)
-        together with frame and use
-        information when warping image for perspective.
-"""
+# TODO: eventually remove draw lines in text direction method
+# TODO: test to crop as large as possible rectangular image
+        from by-text-rotated image
+# TODO: Stretch/warp image from lines and angles in rotate_image_by_line
+#       (blur, lower criteria for detection, correct curved
+#       result to straight lines?)
+        """
 from label_video_reader import VideoFeed
 
 
