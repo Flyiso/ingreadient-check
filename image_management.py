@@ -230,13 +230,33 @@ class ManageFrames:
         lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=50,
                                 minLineLength=30, maxLineGap=5)
         if lines is not None:
+            slopes = []
             for line in lines:
                 x1, y1, x2, y2 = line[0]
                 if abs(y2 - y1) > 0:
                     slope = (x2 - x1) / (y2 - y1)
                     if abs(slope) >= 0.9:
-                        frame = cv2.line(frame, (x1, y1), (x2, y2),
-                                         (0, 0, 255), 2)
+                        slopes.append(slope)
+                        #frame = cv2.line(frame, (x1, y1), (x2, y2),
+                        #                 (0, 0, 255), 2)
+            if slopes:
+                mean_slope = np.mean(slopes)
+                print(mean_slope)
+                y_intercept = frame.shape[0] / 2
+                x = frame.shape[1] // 2
+                y = int(y_intercept + (x / mean_slope))
+                # Draw a line across the image with the mean slope
+                frame = cv2.line(frame, (0, y),
+                                 (frame.shape[1]-1, int(y_intercept)),
+                                 (255, 0, 0), 2)
+                # Calculate angle of rotation to make the line horizontal
+                angle = mean_slope / np.pi  # Use negative reciprocal slope for rotation
+                print(angle)
+                # Rotate the frame
+                rows, cols = frame.shape[:2]
+                M = cv2.getRotationMatrix2D((rows/2, cols/2), angle, 1)
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+
         else:
             print('no lines.')
         return frame

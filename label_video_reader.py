@@ -84,7 +84,8 @@ class VideoFeed:
                 frame = cv2.resize(frame, (self.width, self.height))
                 frame = self.frame_manager.enhance_text_lightness(frame)
                 frame = self.frame_manager.extract_roi(frame)
-                frame = self.frame_manager.detect_text_direction(frame)
+                frame = self.frame_manager.draw_direction_lines(frame)
+                #frame = self.frame_manager.detect_text_direction(frame)
             if frame_n % self.interval == 0:
                 frame = self.panorama_manager.add_image(frame)
                 if self.panorama_manager.success:
