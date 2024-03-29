@@ -28,6 +28,10 @@ def crop_to_min_rectangle_with_lines(frame):
         epsilon = (epsilon / 100) * cv2.arcLength(contour_max, True)
         approx_c = cv2.approxPolyDP(contour_max, epsilon, True)
         # Draw the approximated contour on the image
+        if len(approx_c) == 4:
+            if cv2.contourArea(approx_c) > 0:
+                approx = [approx_c]
+                break
         approx.append(approx_c)
     largest_approximation = max(approx, key=cv2.contourArea)
     frame = crop_outside_contour(frame, largest_approximation)
@@ -36,9 +40,7 @@ def crop_to_min_rectangle_with_lines(frame):
 
 
 def crop_outside_contour(frame, largest_approximation):
-    # Create a mask for the contour
     contour_mask = np.zeros_like(cv2.cvtColor(frame,  cv2.COLOR_RGB2GRAY))
-    # Draw contours on the mask with a specific color (in BGR format)
     cv2.drawContours(contour_mask, [largest_approximation], -1,
                      (255), thickness=cv2.FILLED)
     image = cv2.bitwise_and(frame, frame,  mask=contour_mask)
