@@ -86,7 +86,9 @@ class VideoFeed:
                     frame = self.frame_manager.rotate_by_lines(frame)
                     frame, contour = \
                         self.frame_manager.crop_to_four_corners(frame)
-                    frame = self.frame_manager.stretch_image(frame, contour)
+                    frame = self.frame_manager.stretch_image(frame, contour,
+                                                             (self.height,
+                                                              self.width))
                     self.save_image(f'stitched_panorama_{frame_n}', frame)
                     panorama_images.append(frame)
             cv2.imshow('frame', frame)

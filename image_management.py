@@ -2,7 +2,6 @@
 Manages and extracts data from
 merged images.
 """
-import statistics
 import pytesseract as pt
 import numpy as np
 import cv2
@@ -257,19 +256,43 @@ class ManageFrames:
         image = cv2.bitwise_and(frame, frame,  mask=contour_mask)
         return image
 
-    def stretch_image(self, frame, contour):
+    def stretch_image(self, frame, contour, shape):
         """
         make image a rectangle by stretching corners together.
         """
+        x_max = sorted([point[0][0] for point in contour], reverse=True)[:2]
+        y_max = sorted([point[0][1] for point in contour], reverse=True)[:2]
         x, y, w, h = cv2.boundingRect(contour)
-        top_l = (x, y)
-        top_r = (x + w, y)
-        bot_l = (x, y + h)
-        bot_r = (x + w, y + h)
-        points_a = [top_l, top_r, bot_l, bot_r]
-        points_b = contour
-        frame = self.warp_frame(frame, points_a, points_b)
+        #cv2.drawContours(frame, [contour], -1, (0, 255, 0), 2)
+        fin_rect = (x, y), (x + w, y + h)
+        top_l = [x, y]
+        top_r = [x + w, y]
+        bot_l = [x, y + h]
+        bot_r = [x + w, y + h]
+        points_b = np.array([[top_l], [top_r], [bot_l], [bot_r]])
+        for point in contour:
+            x, y = point[0]
+            if x in x_max and y in y_max:
+                bot_r = point
+            elif x in x_max:
+                top_r = point
+            elif y in y_max:
+                bot_l = point
+            else:
+                top_l = point
+        points_a = np.array([top_l, top_r, bot_l, bot_r])
+        frame = self.warp_frame(frame, points_a, points_b, shape)
+        cv2.rectangle(frame, fin_rect[0], fin_rect[1], (255, 0, 255), 2)
         return frame
 
-    def warp_frame(self, frame, points_a, points_b):
-        return frame
+    def warp_frame(self, frame, points_a, points_b, shape):
+        he = shape[0]
+        wi = shape[1]
+        matrix = cv2.getPerspectiveTransform(np.float32(points_a),
+                                             np.float32(points_b))
+
+        warped = cv2.warpPerspective(frame, matrix,
+                                     (he, wi),
+                                     flags=cv2.INTER_NEAREST,
+                                     borderMode=cv2.BORDER_REPLICATE)
+        return warped
