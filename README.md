@@ -19,3 +19,4 @@ to the dietary restrictions the user has.
 TODO: Test label_video_reader with more videos and images to modify and make application
       usable for all kinds of ingredients lists.
 TODO: Make all code more uniform, clear and easy to read.
+TODO: Figure out how to get a good rectangle/trapezoid from roi detection.
