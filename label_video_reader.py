@@ -5,7 +5,6 @@ import cv2
 from image_management import ManageFrames
 from create_panorama import ManagePanorama
 import numpy as np
-from image_display import crop_to_min_rectangle_with_lines
 
 
 class VideoFeed:
@@ -56,7 +55,6 @@ class VideoFeed:
                                         frame)
                                 merged = cv2.resize(merged,
                                                     (self.width, self.height))
-                                # merged = self.frame_manager.extract_roi(merged)
                                 frames = [merged]
                                 self.save_image(
                                     f'fin_mrg_{num}_of_{len(panorama_images)}',
@@ -70,7 +68,6 @@ class VideoFeed:
                     elif len(frames) <= 8:
                         print('Attempt eMERGEncy merge...')
                         print(len(frames))
-                        frames = self.frame_manager.warp_img(frames)
                         frames = self.panorama_manager.add_images(frames)
 
                 break
@@ -82,13 +79,14 @@ class VideoFeed:
                 frame = cv2.resize(frame, (self.width, self.height))
                 frame = self.frame_manager.enhance_text_lightness(frame)
                 frame = self.frame_manager.extract_roi(frame)
-                frame = self.frame_manager.draw_direction_lines(frame)
-                #frame = self.frame_manager.detect_text_direction(frame)
+                frame = self.frame_manager.rotate_by_lines(frame)
             if frame_n % self.interval == 0:
                 frame = self.panorama_manager.add_image(frame)
                 if self.panorama_manager.success:
-                    frame = self.frame_manager.draw_direction_lines(frame)
-                    frame = crop_to_min_rectangle_with_lines(frame)
+                    frame = self.frame_manager.rotate_by_lines(frame)
+                    frame, contour = \
+                        self.frame_manager.crop_to_four_corners(frame)
+                    frame = self.frame_manager.stretch_image(frame, contour)
                     self.save_image(f'stitched_panorama_{frame_n}', frame)
                     panorama_images.append(frame)
             cv2.imshow('frame', frame)

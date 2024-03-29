@@ -10,7 +10,7 @@ import numpy as np
 import cv2
 
 
-def crop_to_min_rectangle_with_lines(frame):
+def crop_four_corner(frame):
     # Read the input image
 
     # Convert the image to grayscale
@@ -35,8 +35,8 @@ def crop_to_min_rectangle_with_lines(frame):
         approx.append(approx_c)
     largest_approximation = max(approx, key=cv2.contourArea)
     frame = crop_outside_contour(frame, largest_approximation)
-    cv2.drawContours(frame, [largest_approximation], -1, (0, 255, 0), 2)
-    return frame
+    #cv2.drawContours(frame, [largest_approximation], -1, (0, 255, 0), 2)
+    return frame, largest_approximation
 
 
 def crop_outside_contour(frame, largest_approximation):

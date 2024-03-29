@@ -161,39 +161,7 @@ class ManageFrames:
                 frames2.append(frame)
         return frames2
 
-    def get_correction_matrix_values(self, points_1: list) -> list:
-        """
-        attempts to create a matrix to match the length
-        and width/height of input matrix maximum values.
-        """
-        # top right, bottom right, bottom_left, top_left
-        points_2 = [[max(point[0] for point in points_1),
-                    min(point[1] for point in points_1)],
-                    [min(point[0] for point in points_1),
-                    min(point[1] for point in points_1)],
-                    [min(point[0] for point in points_1),
-                    max(point[1] for point in points_1)],
-                    [max(point[0] for point in points_1),
-                    max(point[1] for point in points_1)]]
-        bottom_left, top_left, bottom_right, top_right = [False, False,
-                                                          False, False]
-        for pair in points_1:
-            if pair[0] >= statistics.median([val[0] for val in points_1]):
-                if pair[1] >= statistics.median([val[1] for val in points_1]):
-                    bottom_right = pair
-                else:
-                    top_right = pair
-            else:
-                if pair[1] <= statistics.median([val[1] for val in points_1]):
-                    bottom_left = pair
-                else:
-                    top_left = pair
-        points_1 = [top_right, bottom_left, top_left, bottom_right]
-        if all(points_1):
-            return points_1, points_2
-        return False, False
-
-    def draw_direction_lines(self, frame):
+    def rotate_by_lines(self, frame):
         """
         ties to find the direction of the text.
         """
@@ -259,3 +227,49 @@ class ManageFrames:
         frame2 = cv2.merge(frame_planes)
         frame2 = cv2.cvtColor(frame2, cv2.COLOR_LAB2BGR)
         return frame2
+
+    def crop_to_four_corners(self, frame):
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        _, mask = cv2.threshold(gray, 30, 250, cv2.THRESH_BINARY)
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
+                                       cv2.CHAIN_APPROX_SIMPLE)
+
+        contour_max = max(contours, key=cv2.contourArea)
+        approx = []
+        for epsilon in range(1, 100):
+            epsilon = (epsilon / 100) * cv2.arcLength(contour_max, True)
+            approx_c = cv2.approxPolyDP(contour_max, epsilon, True)
+            if len(approx_c) == 4:
+                if cv2.contourArea(approx_c) > 0:
+                    approx = [approx_c]
+                    break
+            approx.append(approx_c)
+        largest_approximation = max(approx, key=cv2.contourArea)
+        frame = self.crop_out_contour(frame, largest_approximation)
+        return frame, largest_approximation
+
+    def crop_out_contour(self, frame, largest_approximation):
+        contour_mask = np.zeros_like(cv2.cvtColor(frame,  cv2.COLOR_RGB2GRAY))
+        cv2.drawContours(contour_mask, [largest_approximation], -1,
+                         (255), thickness=cv2.FILLED)
+        image = cv2.bitwise_and(frame, frame,  mask=contour_mask)
+        return image
+
+    def stretch_image(self, frame, contour):
+        """
+        make image a rectangle by stretching corners together.
+        """
+        x, y, w, h = cv2.boundingRect(contour)
+        top_l = (x, y)
+        top_r = (x + w, y)
+        bot_l = (x, y + h)
+        bot_r = (x + w, y + h)
+        points_a = [top_l, top_r, bot_l, bot_r]
+        points_b = contour
+        frame = self.warp_frame(frame, points_a, points_b)
+        return frame
+
+    def warp_frame(self, frame, points_a, points_b):
+        return frame
