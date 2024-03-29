@@ -221,7 +221,7 @@ class ManageFrames:
         """
         ties to find the direction of the text.
         """
-        frame_g = cv2.GaussianBlur(frame, (9, 5), 1)
+        frame_g = cv2.GaussianBlur(frame, (9, 9), 0)
         frame_g = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         edges = cv2.Canny(frame_g,
                           self.gs_threshold1, self.gs_threshold2,
@@ -229,36 +229,27 @@ class ManageFrames:
 
         lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=50,
                                 minLineLength=30, maxLineGap=5)
-        if lines is not None:
-            slopes = []
-            for line in lines:
-                x1, y1, x2, y2 = line[0]
-                if abs(y2 - y1) > 0:
-                    slope = (x2 - x1) / (y2 - y1)
-                    if abs(slope) >= 0.9:
-                        slopes.append(slope)
-                        #frame = cv2.line(frame, (x1, y1), (x2, y2),
-                        #                 (0, 0, 255), 2)
-            if slopes:
-                mean_slope = np.mean(slopes)
-                print(mean_slope)
-                y_intercept = frame.shape[0] / 2
-                x = frame.shape[1] // 2
-                y = int(y_intercept + (x / mean_slope))
-                # Draw a line across the image with the mean slope
-                frame = cv2.line(frame, (0, y),
-                                 (frame.shape[1]-1, int(y_intercept)),
-                                 (255, 0, 0), 2)
-                # Calculate angle of rotation to make the line horizontal
-                angle = mean_slope / np.pi  # Use negative reciprocal slope for rotation
-                print(angle)
-                # Rotate the frame
-                rows, cols = frame.shape[:2]
-                M = cv2.getRotationMatrix2D((rows/2, cols/2), angle, 1)
-                frame = cv2.warpAffine(frame, M, (cols, rows))
-
-        else:
-            print('no lines.')
+        if lines is None:
+            return frame
+        slopes = []
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            if abs((y1 - y2) / (x1 - x2)) < 0.25:
+                slope = (y1 - y2) / (x1 - x2)
+                slopes.append(slope)
+                color_1 = int(abs(((y1 - y2) / (x1 - x2))*255)*4)
+                color_2 = 255-color_1
+                frame = cv2.line(frame, (x1, y1), (x2, y2),
+                                 (color_1, color_2, 255), 2)
+        print('')
+        print(np.mean(slopes))
+        print(frame.shape)
+        frame = cv2.line(frame,
+                         (0,
+                          int(frame.shape[0]/2)),
+                         (frame.shape[1],
+                          int(np.mean(slopes)*int(frame.shape[1])+frame.shape[0]/2)),
+                         (255, 255, 0), 3)
         return frame
 
     def rotate_image_by_lines(self, frame, line_slopes):
