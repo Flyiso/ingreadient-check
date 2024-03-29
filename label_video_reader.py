@@ -5,6 +5,7 @@ import cv2
 from image_management import ManageFrames
 from create_panorama import ManagePanorama
 import numpy as np
+from image_display import crop_to_min_rectangle_with_lines
 
 
 class VideoFeed:
@@ -87,6 +88,7 @@ class VideoFeed:
                 frame = self.panorama_manager.add_image(frame)
                 if self.panorama_manager.success:
                     frame = self.frame_manager.draw_direction_lines(frame)
+                    frame = crop_to_min_rectangle_with_lines(frame)
                     self.save_image(f'stitched_panorama_{frame_n}', frame)
                     panorama_images.append(frame)
             cv2.imshow('frame', frame)

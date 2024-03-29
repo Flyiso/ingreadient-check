@@ -65,18 +65,18 @@ class ManageFrames:
                                                   cv2.COLOR_BGR2HSV),
                                      axis=(0, 1)).astype(int)
         print(self.hue_threshold1, self.hue_threshold2)
-        self.hue_threshold1[0] = int(self.hue_threshold1[0]*0.33)
-        self.hue_threshold2[0] = int(self.hue_threshold2[0]*1.33)
-        self.hue_threshold1[1] = int(self.hue_threshold1[1]*0.33)
-        self.hue_threshold2[1] = int(self.hue_threshold2[1]*1.33)
-        self.hue_threshold1[2] = int(self.hue_threshold1[2]*0.33)
-        self.hue_threshold2[2] = int(self.hue_threshold2[2]*1.33)
+        self.hue_threshold1[0] = int(self.hue_threshold1[0]*0.25)
+        self.hue_threshold2[0] = int(self.hue_threshold2[0]*1.25)
+        self.hue_threshold1[1] = int(self.hue_threshold1[1]*0.25)
+        self.hue_threshold2[1] = int(self.hue_threshold2[1]*1.25)
+        self.hue_threshold1[2] = int(self.hue_threshold1[2]*0.25)
+        self.hue_threshold2[2] = int(self.hue_threshold2[2]*1.25)
         self.gs_threshold1 = int((np.min(cv2.cvtColor(self.target_area,
                                                       cv2.COLOR_BGR2GRAY),
-                                         axis=(0, 1)).astype(int))*0.33)
+                                         axis=(0, 1)).astype(int))*0.25)
         self.gs_threshold2 = int(np.max(cv2.cvtColor(self.target_area,
                                                      cv2.COLOR_BGR2GRAY),
-                                        axis=(0, 1)).astype(int)*1.33)
+                                        axis=(0, 1)).astype(int)*1.25)
         print(self.gs_threshold1, self.gs_threshold2)
 
     def extract_roi(self, frame):
@@ -90,12 +90,12 @@ class ManageFrames:
         ret, bin_img = cv2.threshold(frame_p,
                                      self.gs_threshold1, self.gs_threshold2,
                                      cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8))  # 11 11
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))  # 11 11
         bin_img = cv2.morphologyEx(bin_img,
                                    cv2.MORPH_OPEN,
                                    kernel,
                                    iterations=1)
-        bg_mask = cv2.dilate(bin_img, kernel, iterations=9)
+        bg_mask = cv2.dilate(bin_img, kernel, iterations=3)
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         cl_mask = cv2.inRange(hsv_frame, self.hue_threshold1,
                               self.hue_threshold2)
