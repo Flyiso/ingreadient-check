@@ -20,3 +20,4 @@ TODO: Test label_video_reader with more videos and images to modify and make app
       usable for all kinds of ingredients lists.
 TODO: Make all code more uniform, clear and easy to read.
 TODO: Figure out how to get a good rectangle/trapezoid from roi detection.
+TODO: Try Oriented FAST and Rotated Brief.

@@ -263,7 +263,7 @@ class ManageFrames:
         x_max = sorted([point[0][0] for point in contour], reverse=True)[:2]
         y_max = sorted([point[0][1] for point in contour], reverse=True)[:2]
         x, y, w, h = cv2.boundingRect(contour)
-        #cv2.drawContours(frame, [contour], -1, (0, 255, 0), 2)
+        # cv2.drawContours(frame, [contour], -1, (0, 255, 0), 2)
         fin_rect = (x, y), (x + w, y + h)
         top_l = [x, y]
         top_r = [x + w, y]
@@ -282,7 +282,7 @@ class ManageFrames:
                 top_l = point
         points_a = np.array([top_l, top_r, bot_l, bot_r])
         frame = self.warp_frame(frame, points_a, points_b, shape)
-        cv2.rectangle(frame, fin_rect[0], fin_rect[1], (255, 0, 255), 2)
+        # cv2.rectangle(frame, fin_rect[0], fin_rect[1], (255, 0, 255), 2)
         return frame
 
     def warp_frame(self, frame, points_a, points_b, shape):

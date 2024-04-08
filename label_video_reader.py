@@ -124,3 +124,4 @@ class VideoFeed:
         cv2.imwrite(
             f'outputs/img/{self.merge_size}-{self.interval}_{filename}.png',
             frame)
+        print(f'frame- saved shape: {frame.shape}')
