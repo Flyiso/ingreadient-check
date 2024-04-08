@@ -12,7 +12,7 @@ class ManagePanorama:
     """
     def __init__(self, pan_group: int = 3) -> None:
         self.merge_size = pan_group
-        self.stitcher = cv2.Stitcher.create()
+        self.stitcher = cv2.Stitcher.create(mode=1)
         self.waiting = []
         self.stitched = []
         self.all = []
@@ -24,7 +24,7 @@ class ManagePanorama:
         self.success = False
         self.waiting.append(panorama_image)
         self.all.append(panorama_image)
-        print(len(self.waiting))
+        print(f'n-images merging: {len(self.waiting)}')
         if len(self.waiting) >= self.merge_size:
             self.stitch()
         if self.success is True:

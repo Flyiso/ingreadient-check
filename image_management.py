@@ -22,6 +22,9 @@ class ManageFrames:
         set values for frame manager threshold
         based on where most frame is found in
         input frame.
+        Calls methods to get text on image and 
+        method to set threshold values for image
+        enhancement
         """
         frame_data = self.find_text(frame)
         self.set_threshold_values(frame, frame_data)
@@ -296,3 +299,16 @@ class ManageFrames:
                                      flags=cv2.INTER_NEAREST,
                                      borderMode=cv2.BORDER_REPLICATE)
         return warped
+    
+    def draw_detect_keypoints(self, frame):
+        """
+        Draw detected keyponts on img.
+        """
+        frame_gs = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        orb = cv2.ORB_create()
+        key_points = orb.detect(frame_gs, None)
+        key_points, _ = orb.compute(frame_gs, key_points)
+        frame_gs = cv2.drawKeypoints(frame_gs, key_points,
+                                     frame_gs,
+                                     flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        return frame_gs

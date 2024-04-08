@@ -1,8 +1,8 @@
 """
 Manages, runs and imports readers modules.
 """
-from label_video_reader import VideoFeed
-
+#from label_video_reader import VideoFeed
+from video_merge import FromVideo
 
 def run_app(filepath):
     """
@@ -15,7 +15,7 @@ def run_app(filepath):
 
     # 14, 15, 16, 17 works ok in interval <-- but keep as high as possible.
     # 2, 3, 4 works ok in merge_size
-    VideoFeed(video_path=filepath,
+    FromVideo(video_path=filepath,
               interval=14, merge_size=4,
               adjust_h=0.5, adjust_w=0.5,
               config='--oem 3 --psm 6')

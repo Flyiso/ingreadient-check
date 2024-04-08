@@ -89,6 +89,7 @@ class VideoFeed:
                     frame = self.frame_manager.stretch_image(frame, contour,
                                                              (self.height,
                                                               self.width))
+                    #frame = self.frame_manager.draw_detect_keypoints(frame)
                     self.save_image(f'stitched_panorama_{frame_n}', frame)
                     panorama_images.append(frame)
             cv2.imshow('frame', frame)
