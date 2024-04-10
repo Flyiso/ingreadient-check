@@ -4,6 +4,7 @@ Manages, runs and imports readers modules.
 #from label_video_reader import VideoFeed
 from video_merge import FromVideo
 
+
 def run_app(filepath):
     """
     Run all components of application in order-

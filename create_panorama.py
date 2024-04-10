@@ -12,18 +12,22 @@ class ManagePanorama:
     """
     def __init__(self, pan_group: int = 3) -> None:
         self.merge_size = pan_group
-        self.stitcher = cv2.Stitcher.create(mode=1)
+        self.stitcher = cv2.Stitcher_create(mode=1)
+
+        #self.stitcher.setWaveCorrection
+        self.masks = []
         self.waiting = []
         self.stitched = []
-        self.all = []
 
-    def add_image(self, panorama_image):
+    def add_image(self, panorama_image,
+                  mask=None):
         """
         activates merge for images.
+        add (optional)masks to specify roi.
         """
         self.success = False
+        self.masks.append(mask)
         self.waiting.append(panorama_image)
-        self.all.append(panorama_image)
         print(f'n-images merging: {len(self.waiting)}')
         if len(self.waiting) >= self.merge_size:
             self.stitch()
@@ -31,7 +35,8 @@ class ManagePanorama:
             return self.stitched[-1]
         return panorama_image
 
-    def add_images(self, frames: list):
+    def add_images(self, frames: list,
+                   masks: list = None):
         """
         Merge together all input frames.
         """
@@ -66,12 +71,13 @@ class ManagePanorama:
         """
         for val in self.waiting:
             print(val.shape)
-        status, result = self.stitcher.stitch(self.waiting)
+        status, result = self.stitcher.stitch(self.waiting, self.masks)
         if status != cv2.STITCHER_OK:
-            print('Stitcher failed')
-            self.success = False
+            print('Stitcher failed\n\n')
             return
         self.stitched.append(result)
-        print('stitcher success!')
+        print(result.shape)
+        print('stitcher success!\n\n')
         self.success = True
         self.waiting = []
+        self.masks = []

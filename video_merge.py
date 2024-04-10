@@ -2,15 +2,15 @@
 File to test different ways to make merging of images work better.
 """
 import cv2
-from image_management import ManageFrames
+from image_manipulation import ManageFrames
 from create_panorama import ManagePanorama
 import numpy as np
 
 
 class FromVideo:
     def __init__(self, video_path: str | int = 0,
-                 interval: int = 15,
-                 merge_size: int = 2,
+                 interval: int = 10,
+                 merge_size: int = 4,
                  adjust_h: float = 1,
                  adjust_w: float = 1,
                  config: str = '--oem 3 --psm 6') -> None:
@@ -82,16 +82,39 @@ class FromVideo:
         frame = self.frame_manager.stretch_image(frame, contour,
                                                  (self.width,
                                                   self.height))
+
         if self.next_interval != 0:
             self.next_interval -= 1
             return frame
-        frame_stitched = self.panorama_manager.add_image(frame)
+        mask = self.frame_manager.get_roi_mask(frame)
+        frame_stitched = self.panorama_manager.add_image(frame, mask)
+
         if self.panorama_manager.success:
+            frame_stitched = self.process_output(frame_stitched)
             self.save_image(f'stitched_{self.frame_n}',
                             frame_stitched)
             self.panoramas.append(frame_stitched)
             self.next_interval = self.interval
         return frame
+
+    def process_output(self, merged_frame):
+        """
+        attempts to extract the ROI from merged panorama and
+        tries to correct rotation.
+        """
+        print(merged_frame.shape)
+        merged_frame = self.frame_manager.rotate_by_lines(merged_frame)
+        merged_frame = self.frame_manager.extract_roi(merged_frame)
+        merged_frame, contour = \
+            self.frame_manager.crop_to_four_corners(merged_frame)
+        merged_frame = \
+            self.frame_manager.stretch_image(merged_frame,
+                                             contour,
+                                             (merged_frame.shape[1],
+                                              merged_frame.shape[0]))
+        print(merged_frame.shape)
+        print('')
+        return merged_frame
 
     def end_video(self):
         """
@@ -99,25 +122,32 @@ class FromVideo:
         """
         merged = []
         merged_n = 0
+        print(f'\nframes to merge: {len(self.panoramas)}')
         new_merge_size = self.calculate_merge_size()
         self.panorama_manager = ManagePanorama(new_merge_size)
-        for frame in self.panoramas:
-            frame = self.frame_manager.rotate_by_lines(frame)
-            frame = self.frame_manager.extract_roi(frame)
-            frame, contour = self.frame_manager.crop_to_four_corners(frame)
-            frame = self.frame_manager.stretch_image(frame, contour,
-                                                     (self.width,
-                                                      self.height))
-            frame_merged = self.panorama_manager.add_image(frame)
+        for frame_idx, frame in enumerate(self.panoramas):
+            #frame = self.frame_manager.extract_roi(frame)
+            #frame, contour = self.frame_manager.crop_to_four_corners(frame)
+            #frame = self.frame_manager.rotate_by_lines(frame)
+            #frame = self.frame_manager.stretch_image(frame, contour,
+            #                                         (self.width,
+            #                                          self.height))
+            #frame = self.frame_manager.crop_image(frame, contour)
+            mask = self.frame_manager.get_roi_mask(frame)
+            frame_merged = self.panorama_manager.add_image(frame, mask)
             if self.panorama_manager.success:
                 merged_n += 1
                 self.save_image(
                     f'double_merged_{merged_n}_{self.merge_loops}_m_size-{new_merge_size}',
-                                frame)
+                    frame)
                 merged.append(frame_merged)
+            frame = self.frame_manager.draw_detect_keypoints(frame)
+            self.save_image(f'keypoints_{frame_idx}', frame)
+
         self.panoramas = merged
         if len(self.panoramas) >= 2:
             self.merge_loops += 1
+            print(f'\n\nNEW MERGE LOOP: {self.merge_loops}\n\n')
             self.end_video()
 
     def calculate_merge_size(self):
@@ -138,7 +168,7 @@ class FromVideo:
         """
         self.height = int(frame.shape[0]*self.adjust_h)
         self.width = int(frame.shape[1]*self.adjust_w)
-        frame = cv2.resize(frame, (self.width, self.height))
+        # frame = cv2.resize(frame, (self.width, self.height))
         self.frame_manager = ManageFrames(self.config)
         self.panorama_manager = ManagePanorama(self.merge_size)
         self.frame_manager.set_manager_values(frame)
@@ -148,4 +178,4 @@ class FromVideo:
         cv2.imwrite(
             f'outputs/from_v/{self.merge_size}-{self.interval}_{filename}.png',
             frame)
-        print(f'frame- saved shape: {frame.shape}')
+        print(f'frame- saved shape: {frame.shape}\nsaved name: {filename}\n')

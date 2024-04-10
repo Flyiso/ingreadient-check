@@ -21,3 +21,5 @@ TODO: Test label_video_reader with more videos and images to modify and make app
 TODO: Make all code more uniform, clear and easy to read.
 TODO: Figure out how to get a good rectangle/trapezoid from roi detection.
 TODO: Try Oriented FAST and Rotated Brief.
+TODO: Attempt to crop out the least curved part of label and save for final merge.
+TODO: Try to add control of distance between images in each set of frames to merge.

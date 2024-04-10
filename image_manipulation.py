@@ -1,6 +1,8 @@
 """
 Manages and extracts data from
 merged images.
+
+modified version of ManageFrames in image_management.py
 """
 import pytesseract as pt
 import numpy as np
@@ -52,6 +54,7 @@ class ManageFrames:
     def set_threshold_values(self, frame, frame_data: dict):
         """
         adjust threshold to the most text-populated area.
+        get threshold for grayscale and HSV values.
         """
         img_x = int(np.mean(frame_data['top']))
         img_y = int(np.mean(frame_data['left']))
@@ -67,25 +70,25 @@ class ManageFrames:
                                                   cv2.COLOR_BGR2HSV),
                                      axis=(0, 1)).astype(int)
         print(self.hue_threshold1, self.hue_threshold2)
-        self.hue_threshold1[0] = int(self.hue_threshold1[0]*0.25)
-        self.hue_threshold2[0] = int(self.hue_threshold2[0]*1.25)
-        self.hue_threshold1[1] = int(self.hue_threshold1[1]*0.25)
-        self.hue_threshold2[1] = int(self.hue_threshold2[1]*1.25)
-        self.hue_threshold1[2] = int(self.hue_threshold1[2]*0.25)
-        self.hue_threshold2[2] = int(self.hue_threshold2[2]*1.25)
+        self.hue_threshold1[0] = int(self.hue_threshold1[0]*0.35)
+        self.hue_threshold2[0] = int(self.hue_threshold2[0]*1.35)
+        self.hue_threshold1[1] = int(self.hue_threshold1[1]*0.35)
+        self.hue_threshold2[1] = int(self.hue_threshold2[1]*1.35)
+        self.hue_threshold1[2] = int(self.hue_threshold1[2]*0.35)
+        self.hue_threshold2[2] = int(self.hue_threshold2[2]*1.35)
         self.gs_threshold1 = int((np.min(cv2.cvtColor(self.target_area,
                                                       cv2.COLOR_BGR2GRAY),
-                                         axis=(0, 1)).astype(int))*0.25)
+                                         axis=(0, 1)).astype(int))*0.35)
         self.gs_threshold2 = int(np.max(cv2.cvtColor(self.target_area,
                                                      cv2.COLOR_BGR2GRAY),
-                                        axis=(0, 1)).astype(int)*1.25)
+                                        axis=(0, 1)).astype(int)*1.35)
         print(self.gs_threshold1, self.gs_threshold2)
 
-    def extract_roi(self, frame):
-        """"
-        extract roi from grayscale threshold and hsv threshold
+    def get_roi_mask(self, frame):
+        """
+        extracts roi from grayscale threshold and hsv threshold
         separates roi by hue and binary threshold
-        Return extracted roi
+        return mask of ROI.
         """
         frame_p = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame_p = cv2.GaussianBlur(frame_p, (3, 3), 0)
@@ -112,57 +115,55 @@ class ManageFrames:
         mask = np.zeros_like(frame_p)
         cv2.drawContours(mask, [box], 0, (255), -1)
         mask_full = cv2.bitwise_and(mask_full, mask)
-        result = cv2.bitwise_and(frame, frame, mask=mask_full)
-        print(result.shape)  # REMOVE
+        return mask_full
+
+    def extract_roi(self, frame):
+        """"
+        uses mask from self.get_roi_mask to return
+        an image with roi extracted.
+        """
+        mask = self.get_roi_mask(frame)
+        result = cv2.bitwise_and(frame, frame, mask=mask)
         return result
 
-    def warp_img(self, frames: list) -> list:
+    def warp_img(self, frame):
         """
         tries to wrap the images to stitch them together.
         parameters:
             frames(lst): list of frames to warp.
         output:
-            lift of frames transformed to match perspective
+            frame transformed to match perspective
         """
-        print('wrap images..?')
-        frames2 = []
-        for frame in frames:
-            gs_f = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            #  gs_f = self.detect_text_direction(gs_f)
-            #  gs_f = cv2.GaussianBlur(gs_f, (9, 9), 0)
-            ret, thresh1 = cv2.threshold(gs_f, gs_f.mean(),
-                                         gs_f.max(),
-                                         cv2.THRESH_BINARY)
-            contours, hierarchy = cv2.findContours(thresh1,
-                                                   cv2.RETR_LIST,
-                                                   cv2.CHAIN_APPROX_SIMPLE)
-            contour_max = max(contours, key=cv2.contourArea)
-            approx = self.get_approx_corners(contour_max)
+        gs_f = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        ret, thresh1 = cv2.threshold(gs_f, gs_f.mean(),
+                                     gs_f.max(),
+                                     cv2.THRESH_BINARY)
+        contours, hierarchy = cv2.findContours(thresh1,
+                                               cv2.RETR_LIST,
+                                               cv2.CHAIN_APPROX_SIMPLE)
+        contour_max = max(contours, key=cv2.contourArea)
+        approx = self.get_approx_corners(contour_max)
 
-            # perspective transform stuff
-            if isinstance(approx, np.ndarray):
-                points_1 = [list(val[0]) for val in approx]
-                width = max(point[0] for point in points_1)
-                height = max(point[1] for point in points_1)
-                points_1, points_2 = self.get_correction_matrix_values(
-                    points_1)
-            else:
-                points_1 = False
+        # perspective transform stuff
+        if isinstance(approx, np.ndarray):
+            points_1 = [list(val[0]) for val in approx]
+            width = max(point[0] for point in points_1)
+            height = max(point[1] for point in points_1)
+            points_1, points_2 = self.get_correction_matrix_values(
+                points_1)
+        else:
+            points_1 = False
 
-            if isinstance(approx, np.ndarray) and bool(points_1) is True:
-                matrix = cv2.getPerspectiveTransform(np.float32(points_1),
-                                                     np.float32(points_2))
+        if isinstance(approx, np.ndarray) and bool(points_1) is True:
+            matrix = cv2.getPerspectiveTransform(np.float32(points_1),
+                                                 np.float32(points_2))
 
-                corrected = cv2.warpPerspective(frame, matrix,
-                                                (width, height),
-                                                flags=cv2.INTER_LINEAR)
-                for point in points_1:
-                    corrected = cv2.circle(frame, point, 5, (255, 22, 255), -1)
-
-                frames2.append(corrected)
-            else:
-                frames2.append(frame)
-        return frames2
+            frame = cv2.warpPerspective(frame, matrix,
+                                        (width, height),
+                                        flags=cv2.INTER_LINEAR)
+            for point in points_1:
+                frame = cv2.circle(frame, point, 5, (255, 22, 255), -1)
+        return frame
 
     def rotate_by_lines(self, frame):
         """
@@ -186,10 +187,10 @@ class ManageFrames:
                 slopes.append(slope)
         if slopes == []:
             return frame
-        frame = self.rotate_image_by_lines(frame, slopes)
+        frame = self._rotate_image(frame, slopes)
         return frame
 
-    def rotate_image_by_lines(self, frame, line_slopes):
+    def _rotate_image(self, frame, line_slopes):
         """
         calculates the median slope and rotates image accordingly.
         """
@@ -230,7 +231,10 @@ class ManageFrames:
         return frame2
 
     def crop_to_four_corners(self, frame):
-
+        """
+        crops out ROI, limits it to a square-shape
+        to manage image perspective transformation.
+        """
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         _, mask = cv2.threshold(gray, 30, 250, cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
@@ -256,6 +260,14 @@ class ManageFrames:
                          (255), thickness=cv2.FILLED)
         image = cv2.bitwise_and(frame, frame,  mask=contour_mask)
         return image
+
+    def crop_image(self, frame, approximation):
+        """
+        crop out what is outside roi
+        """
+        x, y, w, h = cv2.boundingRect(approximation)
+        frame_roi = frame[y:y+h, x:x+w]
+        return frame_roi
 
     def stretch_image(self, frame, contour, shape):
         """
@@ -284,7 +296,6 @@ class ManageFrames:
         points_a = np.array([top_l, top_r, bot_l, bot_r])
         frame = self.warp_frame(frame, points_a, points_b, shape)
         # cv2.rectangle(frame, fin_rect[0], fin_rect[1], (255, 0, 255), 2)
-        print(f'frame shape after correction: {frame.shape}')
         return frame
 
     def warp_frame(self, frame, points_a, points_b, shape):
@@ -297,7 +308,6 @@ class ManageFrames:
                                      (he, wi),
                                      flags=cv2.INTER_NEAREST,
                                      borderMode=cv2.BORDER_REPLICATE)
-        print(f'warped shape: {warped.shape}')
         return warped
 
     def draw_detect_keypoints(self, frame):
@@ -308,7 +318,7 @@ class ManageFrames:
         orb = cv2.ORB_create()
         key_points = orb.detect(frame_gs, None)
         key_points, _ = orb.compute(frame_gs, key_points)
-        frame_gs = cv2.drawKeypoints(frame_gs, key_points,
-                                     frame_gs,
+        frame_gs = cv2.drawKeypoints(frame, key_points,
+                                     frame,
                                      flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
         return frame_gs
