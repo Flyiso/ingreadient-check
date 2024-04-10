@@ -1,7 +1,6 @@
 """
 Manages, runs and imports readers modules.
 """
-#from label_video_reader import VideoFeed
 from video_merge import FromVideo
 
 
