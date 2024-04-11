@@ -10,6 +10,7 @@ import numpy as np
 class FromVideo:
     def __init__(self, video_path: str | int = 0,
                  interval: int = 10,
+                 frame_space: int = 5,
                  merge_size: int = 4,
                  adjust_h: float = 1,
                  adjust_w: float = 1,
@@ -27,6 +28,7 @@ class FromVideo:
         """
         self.interval = interval
         self.merge_size = merge_size
+        self.frame_space = frame_space
         self.adjust_h = adjust_h
         self.adjust_w = adjust_w
         self.video_path = video_path
@@ -58,7 +60,7 @@ class FromVideo:
             frame = self.process_image(frame)
             self.frame_n += 1
 
-            if len(self.panoramas) > 1:
+            if len(self.panoramas) > 2:
                 self.panoramas = self.merge_merged()
 
             cv2.imshow('frame', frame)
@@ -71,6 +73,7 @@ class FromVideo:
         if isinstance(self.final_frame, np.ndarray):
             data = self.frame_manager.find_text(self.final_frame)
             print(data['text'])
+        print(self.frame_n)
 
     def process_image(self, frame):
         """
@@ -86,6 +89,8 @@ class FromVideo:
                                                  (self.width,
                                                   self.height))
 
+        if self.frame_n % self.frame_space != 0:
+            return frame
         if self.next_interval != 0:
             self.next_interval -= 1
             return frame
@@ -98,7 +103,7 @@ class FromVideo:
                             frame_stitched)
             self.panoramas.append(frame_stitched)
             self.next_interval = self.interval
-            self.draw_on_frame(frame_stitched)
+            self.get_text_mask(frame_stitched)
         return frame
 
     def process_output(self, merged_frame):
@@ -106,6 +111,11 @@ class FromVideo:
         attempts to extract the ROI from merged panorama and
         tries to correct rotation.
         """
+        merged_txt = self.frame_manager.find_text(merged_frame)
+        for i in range(len(merged_txt['text'])):
+            if int(merged_txt['conf'][i]) > 20:
+                x, y, w, h = merged_txt['left'][i], merged_txt['top'][i], merged_txt['width'][i], merged_txt['height'][i]
+                cv2.rectangle(merged_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
         merged_frame = self.frame_manager.rotate_by_lines(merged_frame)
         merged_frame = self.frame_manager.extract_roi(merged_frame)
         merged_frame, contour = \
@@ -123,7 +133,7 @@ class FromVideo:
         """
         merge_obj = ManagePanorama(len(self.panoramas))
         for panorama in self.panoramas:
-            mask = self.frame_manager.get_roi_mask(panorama)
+            mask = self.frame_manager.hugh_lines_mask(panorama)
             panorama = merge_obj.add_image(panorama, mask)
             if merge_obj.success:
                 print('merged!')
@@ -158,7 +168,7 @@ class FromVideo:
                     f'double_merged_{merged_n}_{self.merge_loops}_m_size-{new_merge_size}',
                     frame)
                 merged.append(frame_merged)
-            frame = self.frame_manager.draw_detect_keypoints(frame)
+            #frame = self.frame_manager.draw_detect_keypoints(frame)
             self.save_image(f'keypoints_{frame_idx}', frame)
 
         self.panoramas = merged
@@ -191,15 +201,17 @@ class FromVideo:
         self.frame_manager.set_manager_values(frame)
         return 1
 
-    def draw_on_frame(self, frame):
+    def get_text_mask(self, frame):
         """
         Draws lines, keypoints, and other attributes on
         frame to help figure out how to best manage merged frames.
         This method is to be deleted later on.
         """
         # do stuff here
-        self.save_image(f'attributes_drawn_{self.frame_n}',
-                        frame)
+        mask = self.frame_manager.hugh_lines_mask(frame)
+        #self.save_image(f'text_mask_{self.frame_n}',
+        #                mask)
+        return mask
 
     def save_image(self, filename: str, frame):
         cv2.imwrite(

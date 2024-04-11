@@ -165,7 +165,8 @@ class ManageFrames:
                 frame = cv2.circle(frame, point, 5, (255, 22, 255), -1)
         return frame
 
-    def rotate_by_lines(self, frame):
+    def _get_lines(self, frame, thresh: int = 50,
+                   line_len: int = 30, gap: int = 5):
         """
         ties to find the direction of the text.
         """
@@ -175,9 +176,19 @@ class ManageFrames:
                           self.gs_threshold1, self.gs_threshold2,
                           None, 3)
 
-        lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=50,
-                                minLineLength=30, maxLineGap=5)
+        lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180,
+                                threshold=thresh,
+                                minLineLength=line_len, maxLineGap=gap)
         if lines is None:
+            return None
+        return lines
+
+    def rotate_by_lines(self, frame):
+        """
+        calculates the median slope and rotates image accordingly.
+        """
+        lines = self._get_lines(frame)
+        if lines is None or len(lines) == 0:
             return frame
         slopes = []
         for line in lines:
@@ -187,20 +198,13 @@ class ManageFrames:
                 slopes.append(slope)
         if slopes == []:
             return frame
-        frame = self._rotate_image(frame, slopes)
-        return frame
-
-    def _rotate_image(self, frame, line_slopes):
-        """
-        calculates the median slope and rotates image accordingly.
-        """
-        angle = np.degrees(np.mean(line_slopes))
+        angle = np.degrees(np.mean(slopes))
         height, width = frame.shape[:2]
         rotation_matrix = cv2.getRotationMatrix2D((width // 2, height // 2),
                                                   angle, 1)
-        rotated_image = cv2.warpAffine(frame, rotation_matrix, (width, height),
+        rotated_frame = cv2.warpAffine(frame, rotation_matrix, (width, height),
                                        cv2.INTER_LINEAR)
-        return rotated_image
+        return rotated_frame
 
     def get_approx_corners(self, contour):
         """
@@ -322,3 +326,18 @@ class ManageFrames:
                                      frame,
                                      flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
         return frame_gs
+
+    def hugh_lines_mask(self, frame):
+        """
+        finds horizontal-ich lines in frame and draws them on frame.
+        """
+        lines = self._get_lines(frame, 50, 20, 40)
+        if lines is None:
+            return frame
+        mask = np.zeros_like(frame[:,:,0], dtype=np.uint8)
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            if (x1-x2) != 0 and abs((y1 - y2) / (x1 - x2)) < 0.15:
+                cv2.line(mask, (x1, y1), (x2, y2),
+                         (255, 255, 255), 6)
+        return mask

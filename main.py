@@ -16,7 +16,8 @@ def run_app(filepath):
     # 14, 15, 16, 17 works ok in interval <-- but keep as high as possible.
     # 2, 3, 4 works ok in merge_size
     FromVideo(video_path=filepath,
-              interval=14, merge_size=4,
+              interval=5, merge_size=3,
+              frame_space=3,
               adjust_h=0.5, adjust_w=0.5,
               config='--oem 3 --psm 6')
 
