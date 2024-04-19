@@ -84,10 +84,10 @@ class FromVideo:
         frame = self.frame_manager.enhance_text_lightness(frame)
         frame = self.frame_manager.rotate_by_lines(frame)
         frame = self.frame_manager.extract_roi(frame)
-        frame, contour = self.frame_manager.crop_to_four_corners(frame)
-        frame = self.frame_manager.stretch_image(frame, contour,
-                                                 (self.width,
-                                                  self.height))
+        #frame, contour = self.frame_manager.crop_to_four_corners(frame)
+        #frame = self.frame_manager.stretch_image(frame, contour,
+        #                                         (self.width,
+        #                                          self.height))
 
         if self.frame_n % self.frame_space != 0:
             return frame
@@ -168,7 +168,7 @@ class FromVideo:
                     f'double_merged_{merged_n}_{self.merge_loops}_m_size-{new_merge_size}',
                     frame)
                 merged.append(frame_merged)
-            #frame = self.frame_manager.draw_detect_keypoints(frame)
+            frame = self.frame_manager.draw_detect_keypoints(frame)
             self.save_image(f'keypoints_{frame_idx}', frame)
 
         self.panoramas = merged
