@@ -10,8 +10,6 @@ import numpy as np
 class RecordLabel:
     def __init__(self, video_path: str | int = 0,
                  interval: int = 10,
-                 frame_space: int = 5,
-                 merge_size: int = 4,
                  adjust_h: float = 1,
                  adjust_w: float = 1,
                  config: str = '--oem 3 --psm 6',
@@ -23,17 +21,15 @@ class RecordLabel:
         parameters:
         video_path(str|int): path to the video. Default:0-current camera.
         interval(int): How often to process frame default: every 50 frame.
-        merge_size(int): How many frames to merge to panorama img.
         adjust_h(float): size adjustment for frame height.
         adjust_w(float): size adjustment for frame width.
         config(str): configuration str for pytesseract text recognition.
         img_dir(str): directory to store images in.
         """
-        self.panorama_manager = ManagePanorama(interval, merge_size)
+        self.panorama_manager = ManagePanorama(ManageFrames(config), interval)
         self.adjust_h = adjust_h
         self.adjust_w = adjust_w
         self.video_path = video_path
-        self.config = config
         self.img_dir = f'outputs/{img_dir}/'
         self.start_video()
 
@@ -93,7 +89,6 @@ class RecordLabel:
         """
         self.height = int(frame.shape[0]*self.adjust_h)
         self.width = int(frame.shape[1]*self.adjust_w)
-        self.frame_manager = ManageFrames(self.config)
 
     def save_image(self, filename: str, frame):
         merges = self.panorama_manager.merge_counter

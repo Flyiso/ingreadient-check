@@ -29,6 +29,19 @@ class ManageFrames:
         frame_data = self.find_text(frame)
         self.set_threshold_values(frame, frame_data)
 
+    def prepare_frame(self, frame: np.ndarray) -> np.ndarray:
+        """
+        Use methods to enhance, crop and create mask for input
+        frame, return input frame and mask for frame.
+        """
+        pass
+
+    def return_frame_mask(self, frame: np.ndarray) -> np.ndarray:
+        """
+        Return mask for frame
+        """
+        pass
+
     def set_threshold_values(self, frame, frame_data: dict):
         """
         adjust threshold to the most text-populated area.

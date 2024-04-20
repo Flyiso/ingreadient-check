@@ -28,11 +28,10 @@ def run_app(filepath, img_dir: str = None):
     if img_dir is not None:
         check_directory(img_dir)
     RecordLabel(video_path=filepath,
-                interval=15, merge_size=3,
-                frame_space=3,
+                interval=5,
                 adjust_h=0.25, adjust_w=0.25,
-                config='--oem 3 --psm 6',
+                config='-- 3 --psm 6',
                 img_dir=img_dir)
 
 
-run_app('test_video_4.mp4', 'vid_4')
+run_app('test_video_3.mp4', 'vid_3')
