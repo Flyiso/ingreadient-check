@@ -14,7 +14,8 @@ class RecordLabel:
                  merge_size: int = 4,
                  adjust_h: float = 1,
                  adjust_w: float = 1,
-                 config: str = '--oem 3 --psm 6') -> None:
+                 config: str = '--oem 3 --psm 6',
+                 img_dir: str = 'default') -> None:
         """
         Initialise video capture. Manage video feed and
         frame management.
@@ -25,14 +26,15 @@ class RecordLabel:
         merge_size(int): How many frames to merge to panorama img.
         adjust_h(float): size adjustment for frame height.
         adjust_w(float): size adjustment for frame width.
+        config(str): configuration str for pytesseract text recognition.
+        img_dir(str): directory to store images in.
         """
-        self.interval = interval
-        self.merge_size = merge_size
-        self.frame_space = frame_space
+        self.panorama_manager = ManagePanorama(interval, merge_size)
         self.adjust_h = adjust_h
         self.adjust_w = adjust_w
         self.video_path = video_path
         self.config = config
+        self.img_dir = f'outputs/{img_dir}/'
         self.start_video()
 
     def start_video(self):
@@ -40,11 +42,7 @@ class RecordLabel:
         loops through images and
         defines how to preprocess them
         """
-        self.last_frame = None
         self.frame_n = 0
-        self.next_interval = self.interval
-        self.panoramas = []
-        self.final_frame = False
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
             ret, frame = self.capture.read()
@@ -60,13 +58,13 @@ class RecordLabel:
             frame = self.process_image(frame)
             self.frame_n += 1
 
-            self.last_frame = frame
             cv2.imshow('frame', frame)
             if cv2.waitKey(25) & 0xFF == 27:
                 break
 
         self.capture.release()
         cv2.destroyAllWindows()
+        self.save_image('merge_result', self.panorama_manager.base)
 
     def process_image(self, frame):
         """
@@ -75,6 +73,7 @@ class RecordLabel:
         """
         frame = cv2.resize(frame, (self.width, self.height))
         self.panorama_manager.add_frame(frame)
+        self.frame_n = len(self.panorama_manager.frames)
         return frame
 
     def end_video(self):
@@ -82,6 +81,10 @@ class RecordLabel:
         final cleanup.
         """
         print('DONE!')
+        print(f'merged: {self.panorama_manager.merge_counter}\
+              failed: {self.panorama_manager.fail_counter}')
+        print(f'total frames: {len(self.panorama_manager.frames)}\
+              interval: {self.panorama_manager.interval}')
 
     def set_video_values(self, frame):
         """
@@ -91,13 +94,12 @@ class RecordLabel:
         self.height = int(frame.shape[0]*self.adjust_h)
         self.width = int(frame.shape[1]*self.adjust_w)
         self.frame_manager = ManageFrames(self.config)
-        self.panorama_manager = ManagePanorama(self.interval, self.merge_size)
 
     def save_image(self, filename: str, frame):
+        merges = self.panorama_manager.merge_counter
         cv2.imwrite(
-            f'outputs/lbl_reader/{self.merge_size}-{self.interval}_{filename}.png',
+            f'{self.img_dir}-{filename}_{merges}.png',
             frame)
-        print(f'frame- saved shape: {frame.shape}\nsaved name: {filename}\n')
 
     def track_motion(self, frame1, frame2):
         """

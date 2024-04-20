@@ -1,11 +1,20 @@
 """
 Manages, runs and imports readers modules.
 """
-
+import os
 from video_manager import RecordLabel
 
 
-def run_app(filepath):
+def check_directory(img_dir: str):
+    """
+    Makes sure there is a directory with name of img_dir value.
+    """
+    if not os.path.exists(f'outputs/{img_dir}/'):
+        # Create the directory
+        os.makedirs(f'outputs/{img_dir}/')
+
+
+def run_app(filepath, img_dir: str = None):
     """
     Run all components of application in order-
     filepath: path to video of label
@@ -16,11 +25,14 @@ def run_app(filepath):
 
     # 14, 15, 16, 17 works ok in interval <-- but keep as high as possible.
     # 2, 3, 4 works ok in merge_size
+    if img_dir is not None:
+        check_directory(img_dir)
     RecordLabel(video_path=filepath,
-                interval=5, merge_size=3,
+                interval=15, merge_size=3,
                 frame_space=3,
                 adjust_h=0.25, adjust_w=0.25,
-                config='--oem 3 --psm 6')
+                config='--oem 3 --psm 6',
+                img_dir=img_dir)
 
 
-run_app('test_video_4.mp4')
+run_app('test_video_4.mp4', 'vid_4')
