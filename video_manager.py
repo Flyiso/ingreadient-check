@@ -4,7 +4,6 @@ File to test different ways to make merging of images work better.
 import cv2
 from image_manager import ManageFrames
 from panorama_manager import ManagePanorama
-import numpy as np
 
 
 class RecordLabel:
@@ -105,10 +104,16 @@ class RecordLabel:
 
         # Compute optical flow using Lucas-Kanade method
         lk_params = dict(winSize=(15, 15),
-                        maxLevel=2,
-                        criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
-        prev_pts = cv2.goodFeaturesToTrack(gray1, maxCorners=100, qualityLevel=0.3, minDistance=7, blockSize=7)
-        next_pts, status, err = cv2.calcOpticalFlowPyrLK(gray1, gray2, prev_pts, None, **lk_params)
+                         maxLevel=2,
+                         criteria=(
+                             cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
+                             10, 0.03))
+        prev_pts = cv2.goodFeaturesToTrack(gray1, maxCorners=100,
+                                           qualityLevel=0.3, minDistance=7,
+                                           blockSize=7)
+        next_pts, status, err = cv2.calcOpticalFlowPyrLK(gray1, gray2,
+                                                         prev_pts, None,
+                                                         **lk_params)
 
         # Select good points
         good_new = next_pts[status == 1]

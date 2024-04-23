@@ -22,12 +22,24 @@ class ManageFrames:
         set values for frame manager threshold
         based on where most frame is found in
         input frame.
-        Calls methods to get text on image and 
+        Calls methods to get text on image and
         method to set threshold values for image
         enhancement
         """
         frame_data = self.find_text(frame)
         self.set_threshold_values(frame, frame_data)
+
+    def find_text(self, frame,
+                  output_type: str = 'dict',
+                  lang: str = 'swe') -> dict:
+        """
+        Returns data dictionary of the text
+        found in the frame.
+        """
+        data = pt.image_to_data(frame, config=self.config,
+                                lang=lang,
+                                output_type=output_type)
+        return data
 
     def prepare_frame(self, frame: np.ndarray) -> np.ndarray:
         """
@@ -74,15 +86,3 @@ class ManageFrames:
                                                      cv2.COLOR_BGR2GRAY),
                                         axis=(0, 1)).astype(int)*1.35)
         print(self.gs_threshold1, self.gs_threshold2)
-
-    def find_text(self, frame,
-                  output_type: str = 'dict',
-                  lang: str = 'swe') -> dict:
-        """
-        Returns data dictionary of the text
-        found in the frame.
-        """
-        data = pt.image_to_data(frame, config=self.config,
-                                lang=lang,
-                                output_type=output_type)
-        return data
