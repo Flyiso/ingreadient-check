@@ -30,8 +30,8 @@ def run_app(filepath, img_dir: str = None):
     RecordLabel(video_path=filepath,
                 interval=5,
                 adjust_h=0.25, adjust_w=0.25,
-                config='-- 3 --psm 6',
+                config='oem-- 3 --psm 6',
                 img_dir=img_dir)
 
 
-run_app('test_video_3.mp4', 'vid_3')
+run_app('test_video_1.mp4', 'vid_1')

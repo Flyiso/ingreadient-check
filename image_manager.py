@@ -2,8 +2,12 @@
 image manipulation, such as
 threshold, cropping, enhancement.
 """
+from transformers import AutoImageProcessor, AutoModel
+from PIL import Image
 import pytesseract as pt
 import numpy as np
+import requests
+import torch
 import cv2
 
 
@@ -16,6 +20,19 @@ class ManageFrames:
         Initializes the fame manager
         """
         self.config = config
+        self.processor = \
+            AutoImageProcessor.from_pretrained('MODEL?')
+        self.model = AutoModel.from_pretrained('MODEL?')
+
+    def add_image(self, frame):
+        inputs = self.processor(frame, return_tensors='pt')
+        outputs = self.model(**inputs)
+        last_hidden_states = outputs[0]
+        self.model.config.return_dict = False
+        with torch.no_grad():
+            traced_model = torch.jit.trace(self.model, [inputs.pixel_values])
+            traced_outputs = traced_model(inputs.pixel_values)
+        print((last_hidden_states - traced_outputs[0]).abs().max())
 
     def set_manager_values(self, frame):
         """
@@ -36,9 +53,8 @@ class ManageFrames:
         Returns data dictionary of the text
         found in the frame.
         """
-        data = pt.image_to_data(frame, config=self.config,
-                                lang=lang,
-                                output_type=output_type)
+        data = pt.image_to_data(image=frame, config=self.config,
+                                lang=lang, output_type=output_type)
         return data
 
     def prepare_frame(self, frame: np.ndarray) -> np.ndarray:

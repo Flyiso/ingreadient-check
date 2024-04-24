@@ -25,7 +25,9 @@ class RecordLabel:
         config(str): configuration str for pytesseract text recognition.
         img_dir(str): directory to store images in.
         """
-        self.panorama_manager = ManagePanorama(ManageFrames(config), interval)
+        self.config = config
+        self.panorama_manager = ManagePanorama(
+            ManageFrames(self.config), interval)
         self.adjust_h = adjust_h
         self.adjust_w = adjust_w
         self.video_path = video_path
@@ -94,39 +96,3 @@ class RecordLabel:
         cv2.imwrite(
             f'{self.img_dir}-{filename}_{merges}.png',
             frame)
-
-    def track_motion(self, frame1, frame2):
-        """
-        return img w motion track
-        """
-        gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
-        gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
-
-        # Compute optical flow using Lucas-Kanade method
-        lk_params = dict(winSize=(15, 15),
-                         maxLevel=2,
-                         criteria=(
-                             cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT,
-                             10, 0.03))
-        prev_pts = cv2.goodFeaturesToTrack(gray1, maxCorners=100,
-                                           qualityLevel=0.3, minDistance=7,
-                                           blockSize=7)
-        next_pts, status, err = cv2.calcOpticalFlowPyrLK(gray1, gray2,
-                                                         prev_pts, None,
-                                                         **lk_params)
-
-        # Select good points
-        good_new = next_pts[status == 1]
-        good_old = prev_pts[status == 1]
-
-        # Draw motion vectors
-        for i, (new, old) in enumerate(zip(good_new, good_old)):
-            a, b = new.ravel().astype(int)
-            c, d = old.ravel().astype(int)
-            frame2 = cv2.line(frame2, (a, b), (c, d), (0, 255, 0), 2)
-            frame2 = cv2.circle(frame2, (a, b), 5, (0, 0, 255), -1)
-
-        # Display frames with motion vectors
-        cv2.imshow('Optical Flow', frame2)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
