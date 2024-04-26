@@ -23,7 +23,7 @@ TODO: make it runable on mobile devices.
 TODO: crop output/detected label from DINO
 TODO: Add GroundedSAM model to better capture/correct text perspective?
 
-Citation
+## Citation
 @article{liu2023grounding,
   title={Grounding dino: Marrying dino with grounded pre-training for open-set object detection},
   author={Liu, Shilong and Zeng, Zhaoyang and Ren, Tianhe and Li, Feng and Zhang, Hao and Yang, Jie and Li, Chunyuan and Yang, Jianwei and Su, Hang and Zhu, Jun and others},
