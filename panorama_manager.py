@@ -68,7 +68,7 @@ class ManagePanorama:
             self.base = result
             #self.base_mask = self.frame_manager.return_frame_mask(result)
             self.merge_counter += 1
-            
+
             return True
         self.fail_counter += 1
         print('New Merge: Failed')

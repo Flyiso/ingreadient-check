@@ -18,13 +18,14 @@ class ManageFrames:
     def __init__(self, pt_config: str) -> None:
         """
         Initializes the fame manager
+        and model for label detection.
         """
         self.pt_config = pt_config
         self.model = \
             load_model(
-                ".venv/lib/python3.11/site-packages/groundingdino/config/GroundingDINO_SwinT_OGC.py",
-                ".venv/lib/python3.11/site-packages/groundingdino/weights/groundingdino_swint_ogc.pth")
-        self.text_promt = 'ingredient label . word'
+                '.venv/lib/python3.11/site-packages/groundingdino/config/GroundingDINO_SwinT_OGC.py',
+                '.venv/lib/python3.11/site-packages/groundingdino/weights/groundingdino_swint_ogc.pth')
+        self.text_promt = 'ingredient label . words'
         self.box_threshold = 0.35
         self.text_threshold = 0.25
 
@@ -41,6 +42,9 @@ class ManageFrames:
                                    boxes=boxes,
                                    logits=logits,
                                    phrases=phrases)
+        print(f'\nBoxes: {boxes}')
+        print(f'Logits: {logits}')
+        print(f'Phrases: {phrases}\n')
         cv2.imwrite("annotated_image.jpg", annotated_frame)
 
     def set_manager_values(self, frame):

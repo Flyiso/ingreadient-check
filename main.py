@@ -34,4 +34,4 @@ def run_app(filepath, img_dir: str = None):
                 img_dir=img_dir)
 
 
-run_app('test_video_1.mp4', 'vid_1')
+run_app('test_video_3.mp4', 'vid_3')
