@@ -11,7 +11,7 @@ class RecordLabel:
                  interval: int = 10,
                  adjust_h: float = 1,
                  adjust_w: float = 1,
-                 config: str = '--oem 3 --psm 6',
+                 pt_config: str = '--oem 3 --psm 6',
                  img_dir: str = 'default') -> None:
         """
         Initialise video capture. Manage video feed and
@@ -25,9 +25,9 @@ class RecordLabel:
         config(str): configuration str for pytesseract text recognition.
         img_dir(str): directory to store images in.
         """
-        self.config = config
-        self.panorama_manager = ManagePanorama(
-            ManageFrames(self.config), interval)
+        self.pt_config = pt_config
+        panorama_manager = ManageFrames(self.pt_config)
+        self.panorama_manager = ManagePanorama(panorama_manager, interval)
         self.adjust_h = adjust_h
         self.adjust_w = adjust_w
         self.video_path = video_path

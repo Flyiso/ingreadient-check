@@ -14,7 +14,7 @@ class ManagePanorama:
                  interval: int = 10) -> None:
         """
         parameters:
-            interval(int): distance in frames between every merge default: 10 
+            interval(int): distance in frames between every merge default: 10
         """
         self.interval = interval
         self.image_management = None
@@ -54,20 +54,21 @@ class ManagePanorama:
         # make sure there is a frame base
         if self.base is None:
             self.base = frame
+            print('New Merge: First frame')
             self.frame_manager.set_manager_values(self.base)
             #self.base, self.base_mask = self.frame_manager.prepare_frame(frame)
-            print('New Merge: First frame')
             return True
 
         # stitch:
         #frame, mask = self.frame_manager.prepare_frame(frame)
         status, result = self.stitcher.stitch([self.base, frame])
         if status == cv2.STITCHER_OK:
+            print('New Merge: Success')
             self.frame_manager.add_image(frame)
             self.base = result
             #self.base_mask = self.frame_manager.return_frame_mask(result)
             self.merge_counter += 1
-            print('New Merge: Success')
+            
             return True
         self.fail_counter += 1
         print('New Merge: Failed')

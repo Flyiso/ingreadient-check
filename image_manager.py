@@ -2,11 +2,11 @@
 image manipulation, such as
 threshold, cropping, enhancement.
 """
-from transformers import AutoImageProcessor, AutoModel
-from PIL import Image
+from groundingdino.util.inference import load_model, load_image, predict, annotate
+import cv2
+#from transformers import AutoProcessor, GroundingDinoForObjectDetection
 import pytesseract as pt
 import numpy as np
-import requests
 import torch
 import cv2
 
@@ -15,24 +15,33 @@ class ManageFrames:
     """
     manages images for panorama merge.
     """
-    def __init__(self, config: str) -> None:
+    def __init__(self, pt_config: str) -> None:
         """
         Initializes the fame manager
         """
-        self.config = config
-        self.processor = \
-            AutoImageProcessor.from_pretrained('MODEL?')
-        self.model = AutoModel.from_pretrained('MODEL?')
+        self.pt_config = pt_config
+        self.model = \
+            load_model(
+                ".venv/lib/python3.11/site-packages/groundingdino/config/GroundingDINO_SwinT_OGC.py",
+                ".venv/lib/python3.11/site-packages/groundingdino/weights/groundingdino_swint_ogc.pth")
+        self.text_promt = 'ingredient label . word'
+        self.box_threshold = 0.35
+        self.text_threshold = 0.25
 
     def add_image(self, frame):
-        inputs = self.processor(frame, return_tensors='pt')
-        outputs = self.model(**inputs)
-        last_hidden_states = outputs[0]
-        self.model.config.return_dict = False
-        with torch.no_grad():
-            traced_model = torch.jit.trace(self.model, [inputs.pixel_values])
-            traced_outputs = traced_model(inputs.pixel_values)
-        print((last_hidden_states - traced_outputs[0]).abs().max())
+        cv2.imwrite('frame.jpeg', frame)
+        image_source, image = load_image('frame.jpeg')
+        boxes, logits, phrases = predict(
+            model=self.model,
+            image=image,
+            caption=self.text_promt,
+            box_threshold=self.box_threshold,
+            text_threshold=self.text_threshold)
+        annotated_frame = annotate(image_source=image_source,
+                                   boxes=boxes,
+                                   logits=logits,
+                                   phrases=phrases)
+        cv2.imwrite("annotated_image.jpg", annotated_frame)
 
     def set_manager_values(self, frame):
         """
@@ -53,7 +62,7 @@ class ManageFrames:
         Returns data dictionary of the text
         found in the frame.
         """
-        data = pt.image_to_data(image=frame, config=self.config,
+        data = pt.image_to_data(image=frame, config=self.pt_config,
                                 lang=lang, output_type=output_type)
         return data
 
