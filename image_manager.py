@@ -11,6 +11,7 @@ import pytesseract as pt
 import supervision as sv
 import numpy as np
 import torch
+import math
 import cv2
 
 
@@ -50,10 +51,13 @@ class ManageFrames:
         detections.class_id
         detections.mask = self.segment_label(frame, detections.xyxy)
         mask_annotator = sv.MaskAnnotator()
-        annotated_frame = mask_annotator.annotate(scene=frame.copy(),
-                                                  detections=detections)
-        cv2.imwrite('masked_img.jpg', annotated_frame)
-        print('SAVED AN IMAGE')
+        empty_image = np.zeros((frame.shape), dtype=np.uint8)
+        roi_mask = cv2.cvtColor(mask_annotator.annotate(scene=empty_image,
+                                                        detections=detections,
+                                                        opacity=1),
+                                cv2.COLOR_BGR2GRAY)
+        img = self.distort_perspective(frame, roi_mask)
+        cv2.imwrite('mask.png', img)
 
     def segment_label(self, frame, xyxy: np.ndarray) -> np.ndarray:
         """
@@ -72,10 +76,23 @@ class ManageFrames:
         result_masks = []
         for box in xyxy:
             masks, scores, logits = self.sam_predictor.predict(
-                box=box, multimask_output=True)
+                box=box, multimask_output=False)
             index = np.argmax(scores)
             result_masks.append(masks[index])
         return np.array(result_masks)
+
+    def distort_perspective(self, frame: np.ndarray,
+                            mask: np.ndarray) -> np.ndarray:
+        """
+        Uses mask to detect ROI and return ROI with perspective corrected.
+        """
+        _, mask_binary = cv2.threshold(mask, 0, 255, cv2.THRESH_BINARY)
+        contours, _ = cv2.findContours(mask_binary, cv2.RETR_EXTERNAL,
+                                       cv2.CHAIN_APPROX_SIMPLE)
+        x, y, w, h = cv2.boundingRect(contours[0])
+        roi = frame[y:y+h, x:x+w]
+        resized_roi = cv2.resize(roi, (mask.shape[1], mask.shape[0]))
+        return resized_roi
 
     def enhance_class_names(self) -> List[str]:
         """
