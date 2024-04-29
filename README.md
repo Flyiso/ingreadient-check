@@ -3,9 +3,7 @@ application to read ingredient labels on items of varying shape.
 The application compares the ingredients found, and compares it
 to the dietary restrictions the user has.
 
-TODO: adjust/make adaptable to other videos./ new videos added.
-TODO: make frame/image edit class more consistent/easy to use. / New class.
-
+1) record labels to make application usable on containers with label wrapped around.
 TODO: test to crop as large as possible rectangular image from by-text-rotated image
  
 TODO: Test label_video_reader with more videos and images to modify and make application
@@ -21,7 +19,16 @@ TODO: make it runable on mobile devices.
       (less pytesseract? more efficient ways to find text region? image segmentation? huggingface?)
 
 TODO: crop output/detected label from DINO
-TODO: Add GroundedSAM model to better capture/correct text perspective?
+TODO: Perspective warp on GroundedDINO/SAM output
+TODO: enhance images before merge?
+
+2) add option to add label by photo for fully visible labels.
+
+3) Detect words on ingredient label, filter and save by target language.
+
+4) Databases & relations, make option to connect detected ingredient list to specific product(and barcode?/option to scan just by barcode to avoid DINO/SAM when not necessary?)
+
+5) GUI, user accounts
 
 ## Citation
 @article{liu2023grounding,
