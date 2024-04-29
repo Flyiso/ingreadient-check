@@ -2,10 +2,13 @@
 image manipulation, such as
 threshold, cropping, enhancement.
 """
-from groundingdino.util.inference import load_model, load_image, predict, annotate
-import cv2
+from groundingdino.util.inference import Model
+from segment_anything import sam_model_registry, SamPredictor
 #from transformers import AutoProcessor, GroundingDinoForObjectDetection
+from IPython.display import display, HTML
+from typing import List
 import pytesseract as pt
+import supervision as sv
 import numpy as np
 import torch
 import cv2
@@ -20,32 +23,75 @@ class ManageFrames:
         Initializes the fame manager
         and model for label detection.
         """
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        sam_encoder_version = 'vit_h'
+        sam_checkpoint_path = 'weights/sam_vit_h_4b8939.pth'
         self.pt_config = pt_config
-        self.model = \
-            load_model(
+        self.dino_model = \
+            Model(
                 '.venv/lib/python3.11/site-packages/groundingdino/config/GroundingDINO_SwinT_OGC.py',
                 '.venv/lib/python3.11/site-packages/groundingdino/weights/groundingdino_swint_ogc.pth')
-        self.text_promt = 'ingredient label . words'
+        self.classes = ['concentrated text area']
         self.box_threshold = 0.35
         self.text_threshold = 0.25
+        self.sam_model = sam_model_registry[sam_encoder_version](
+            checkpoint=sam_checkpoint_path).to(device=device)
+        self.sam_predictor = SamPredictor(self.sam_model)
 
-    def add_image(self, frame):
+    def find_label(self, frame):
         cv2.imwrite('frame.jpeg', frame)
-        image_source, image = load_image('frame.jpeg')
-        boxes, logits, phrases = predict(
-            model=self.model,
-            image=image,
-            caption=self.text_promt,
+        detections = self.dino_model.predict_with_classes(
+            image=frame,
+            classes=self.enhance_class_names(),
             box_threshold=self.box_threshold,
             text_threshold=self.text_threshold)
-        annotated_frame = annotate(image_source=image_source,
-                                   boxes=boxes,
-                                   logits=logits,
-                                   phrases=phrases)
-        print(f'\nBoxes: {boxes}')
-        print(f'Logits: {logits}')
-        print(f'Phrases: {phrases}\n')
-        cv2.imwrite("annotated_image.jpg", annotated_frame)
+        print(f'type:{type(detections)} len:{len(detections)}')
+        print(f'detections: {detections}')
+        detections.class_id
+        detections.mask = self.segment_label(frame, detections.xyxy)
+        mask_annotator = sv.MaskAnnotator()
+        annotated_frame = mask_annotator.annotate(scene=frame.copy(),
+                                                  detections=detections)
+        cv2.imwrite('masked_img.jpg', annotated_frame)
+        print('SAVED AN IMAGE')
+
+    def segment_label(self, frame, xyxy: np.ndarray) -> np.ndarray:
+        """
+        Use GroundedSAM to detect and get mask for text/label area
+        of image.
+        """
+        # why this? copyright/license reasons?
+        display(HTML(
+            """
+            <a target="_blank" href="https://colab.research.google.com/github/facebookresearch/segment-anything/blob/main/notebooks/predictor_example.ipynb">
+            <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+            </a>
+            """
+            ))
+        self.sam_predictor.set_image(frame, image_format='RGB')
+        result_masks = []
+        for box in xyxy:
+            masks, scores, logits = self.sam_predictor.predict(
+                box=box, multimask_output=True)
+            index = np.argmax(scores)
+            result_masks.append(masks[index])
+        return np.array(result_masks)
+
+    def enhance_class_names(self) -> List[str]:
+        """
+        Enhances class names by specifying prompt details.
+        Returns updated list.
+        """
+        print([
+            f"all {class_name}s"
+            for class_name
+            in self.classes
+        ])
+        return [
+            f"all {class_name}s"
+            for class_name
+            in self.classes
+        ]
 
     def set_manager_values(self, frame):
         """

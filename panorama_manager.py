@@ -64,7 +64,7 @@ class ManagePanorama:
         status, result = self.stitcher.stitch([self.base, frame])
         if status == cv2.STITCHER_OK:
             print('New Merge: Success')
-            self.frame_manager.add_image(frame)
+            self.frame_manager.find_label(frame)
             self.base = result
             #self.base_mask = self.frame_manager.return_frame_mask(result)
             self.merge_counter += 1
