@@ -32,7 +32,7 @@ class ManageFrames:
             Model(
                 '.venv/lib/python3.11/site-packages/groundingdino/config/GroundingDINO_SwinT_OGC.py',
                 '.venv/lib/python3.11/site-packages/groundingdino/weights/groundingdino_swint_ogc.pth')
-        self.classes = ['concentrated text area']
+        self.classes = ['lines of text']
         self.box_threshold = 0.35
         self.text_threshold = 0.25
         self.sam_model = sam_model_registry[sam_encoder_version](
@@ -57,7 +57,7 @@ class ManageFrames:
                                                         opacity=1),
                                 cv2.COLOR_BGR2GRAY)
         img = self.distort_perspective(frame, roi_mask)
-        cv2.imwrite('mask.png', img)
+        cv2.imwrite('img_disorted.png', img)
 
     def segment_label(self, frame, xyxy: np.ndarray) -> np.ndarray:
         """
@@ -65,13 +65,6 @@ class ManageFrames:
         of image.
         """
         # why this? copyright/license reasons?
-        display(HTML(
-            """
-            <a target="_blank" href="https://colab.research.google.com/github/facebookresearch/segment-anything/blob/main/notebooks/predictor_example.ipynb">
-            <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
-            </a>
-            """
-            ))
         self.sam_predictor.set_image(frame, image_format='RGB')
         result_masks = []
         for box in xyxy:
@@ -86,26 +79,86 @@ class ManageFrames:
         """
         Uses mask to detect ROI and return ROI with perspective corrected.
         """
-        _, mask_binary = cv2.threshold(mask, 0, 255, cv2.THRESH_BINARY)
-        contours, _ = cv2.findContours(mask_binary, cv2.RETR_EXTERNAL,
+        # _, mask_binary = cv2.threshold(mask, 0, 255, cv2.THRESH_BINARY)
+        _, mask_binary = cv2.threshold(mask, mask.mean(), mask.max(),
+                                       cv2.THRESH_BINARY)
+        contours, _ = cv2.findContours(mask_binary, cv2.RETR_LIST,
                                        cv2.CHAIN_APPROX_SIMPLE)
-        x, y, w, h = cv2.boundingRect(contours[0])
-        roi = frame[y:y+h, x:x+w]
-        resized_roi = cv2.resize(roi, (mask.shape[1], mask.shape[0]))
-        return resized_roi
+        print(f'contours total: {len(contours)}')
+        print(f'contour: {contours}')
+
+        cont_max = max(contours, key=cv2.contourArea)
+        points_2 = self.sort_correction_corners(
+            np.array([(0, 0), (frame.shape[0], 0),
+                      (frame.shape[:2]), (0, frame.shape[1])]))
+        points_1 = self.get_approx_corners(cont_max)
+
+        if isinstance(points_1, np.ndarray):
+            points = [list(val[0]) for val in points_1]
+            width = max(point[0] for point in points)
+            height = max(point[1] for point in points)
+        else:
+            points_1 = False
+
+        if isinstance(points_1, np.ndarray):
+            print(f'p1-{type(points_1)}- {points_1}')
+            print(f'p2-{type(points_2)}- {points_2}')
+            matrix = cv2.getPerspectiveTransform(np.float32(points_1),
+                                                 np.float32(points_2))
+
+            frame = cv2.warpPerspective(frame, matrix,
+                                        (width, height),
+                                        flags=cv2.INTER_LINEAR)
+        return frame
+
+    def get_approx_corners(self, contour: np.ndarray) -> np.ndarray:
+        """
+        Approximates the corners of a given contour,
+        using the Douglas-Peucker algorithm.
+
+        Parameters:
+        - contour (numpy.ndarray): A contour represented as a numpy array.
+
+        Returns:
+        - numpy.ndarray or None: An array containing the approximated corners 
+        of the contour if it is a quadrilateral shape; otherwise, None.
+        """
+        eps_vals = [0.99, 0.9, 0.5, 0.4, 0.3, 0.1,
+                    0.09, 0.08, 0.07, 0.06,
+                    0.05, 0.04, 0.025, 0.030,
+                    0.02, 0.015, 0.01, 0.009,
+                    0.005, 0.001, 0.0005, 0.0001]
+        for eps_val in eps_vals:
+            epsilon = eps_val * cv2.arcLength(contour, True)
+            approx = cv2.approxPolyDP(contour, epsilon, True)
+            print(f'{eps_val}-{len(approx)}')
+            print(approx)
+            if len(approx) == 4:
+                print(f'\napprox{type(approx)}: \n{approx}\n')
+                approx = self.sort_correction_corners(approx)
+                print(f'\napprox sorted{type(approx)}: \n{approx}\n')
+                return approx
+        print('\nno approx?\n')
+
+    def sort_correction_corners(self, corners) -> list:
+        """
+        Make sure corners are in the same order before perspective transform.
+        Returns  corners of square, clockwise, with top left corner first. 
+        """
+        sorted_horizontal = sorted(corners, key=lambda x: x[0][0])
+        top_left = sorted(sorted_horizontal[:2], key=lambda x: x[0][1])[0]
+        bottom_left = sorted(sorted_horizontal[:2], key=lambda x: x[0][1])[1]
+        top_right = sorted(sorted_horizontal[2:], key=lambda x: x[0][1])[0]
+        bottom_right = sorted(sorted_horizontal[2:], key=lambda x: x[0][1])[1]
+        return np.array([top_left, bottom_left, top_right, bottom_right])
 
     def enhance_class_names(self) -> List[str]:
         """
         Enhances class names by specifying prompt details.
         Returns updated list.
         """
-        print([
-            f"all {class_name}s"
-            for class_name
-            in self.classes
-        ])
         return [
-            f"all {class_name}s"
+            f"all full {class_name}s"
             for class_name
             in self.classes
         ]
