@@ -86,8 +86,11 @@ class ManageFrames:
         cont_max = max(contours, key=cv2.contourArea)
         x, y, w, h = cv2.boundingRect(cont_max)
 
-        frame = frame[y:y+h, x:x+w]
-        mask = mask_binary[y:y+h, x:x+w]
+        frame = frame[y-int(0.05*h):y+h+int(0.05*h),
+                      x-int(0.05*w):x+w+int(0.05*w)]
+        cv2.imwrite('frame_c.png', frame)
+        mask = mask_binary[y-int(0.05*h):y+h+int(0.05*h),
+                           x-int(0.05*w):x+w+int(0.05*w)]
         contours, _ = cv2.findContours(mask, cv2.RETR_LIST,
                                        cv2.CHAIN_APPROX_SIMPLE)
         cont_max = max(contours, key=cv2.contourArea)
@@ -100,6 +103,7 @@ class ManageFrames:
             homography = homography.astype(np.float64)
             frame = cv2.warpPerspective(frame, homography,
                                         dsize=cv2.boundingRect(cont_max)[2:])
+            cv2.imwrite('frame_w.png', frame)
         return frame
 
     def get_corr_corners(self, contour: np.ndarray) -> np.ndarray:
