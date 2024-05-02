@@ -24,6 +24,8 @@ TODO: enhance images before merge?
 
 TODO: ROI returning(image_manager/distort_perspective) fit roi in mask -> distort roi(in mask) to rectangle w height and width of mask.
 
+TODO: Instead of perspective transform just by corners, try  to find largest and smallest x and y  among the sides of the label, and make it  8 correction points.
+
 2) add option to add label by photo for fully visible labels.
 
 3) Detect words on ingredient label, filter and save by target language.

@@ -48,7 +48,7 @@ class ManageFrames:
             text_threshold=self.text_threshold)
         print(f'type:{type(detections)} len:{len(detections)}')
         print(f'detections: {detections}')
-        detections.class_id
+        #detections.class_id
         detections.mask = self.segment_label(frame, detections.xyxy)
         mask_annotator = sv.MaskAnnotator()
         empty_image = np.zeros((frame.shape), dtype=np.uint8)
@@ -68,7 +68,7 @@ class ManageFrames:
         self.sam_predictor.set_image(frame, image_format='RGB')
         result_masks = []
         for box in xyxy:
-            masks, scores, logits = self.sam_predictor.predict(
+            masks, scores, _ = self.sam_predictor.predict(
                 box=box, multimask_output=False)
             index = np.argmax(scores)
             result_masks.append(masks[index])
@@ -79,37 +79,39 @@ class ManageFrames:
         """
         Uses mask to detect ROI and return ROI with perspective corrected.
         """
-        # _, mask_binary = cv2.threshold(mask, 0, 255, cv2.THRESH_BINARY)
         _, mask_binary = cv2.threshold(mask, mask.mean(), mask.max(),
                                        cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(mask_binary, cv2.RETR_LIST,
                                        cv2.CHAIN_APPROX_SIMPLE)
-        print(f'contours total: {len(contours)}')
-        print(f'contour: {contours}')
-
         cont_max = max(contours, key=cv2.contourArea)
-        points_2 = self.sort_correction_corners(
-            np.array([(0, 0), (frame.shape[0], 0),
-                      (frame.shape[:2]), (0, frame.shape[1])]))
+        x, y, w, h = cv2.boundingRect(cont_max)
+
+        frame = frame[y:y+h, x:x+w]
+        mask = mask_binary[y:y+h, x:x+w]
+        contours, _ = cv2.findContours(mask, cv2.RETR_LIST,
+                                       cv2.CHAIN_APPROX_SIMPLE)
+        cont_max = max(contours, key=cv2.contourArea)
+
         points_1 = self.get_approx_corners(cont_max)
+        points_2 = self.get_corr_corners(cont_max)
 
-        if isinstance(points_1, np.ndarray):
-            points = [list(val[0]) for val in points_1]
-            width = max(point[0] for point in points)
-            height = max(point[1] for point in points)
-        else:
-            points_1 = False
-
-        if isinstance(points_1, np.ndarray):
-            print(f'p1-{type(points_1)}- {points_1}')
-            print(f'p2-{type(points_2)}- {points_2}')
+        if all(isinstance(p, np.ndarray) for p in [points_1, points_2]):
             matrix = cv2.getPerspectiveTransform(np.float32(points_1),
-                                                 np.float32(points_2))
-
+                                                 np.float32(points_2),
+                                                 cv2.DECOMP_SVD)
             frame = cv2.warpPerspective(frame, matrix,
-                                        (width, height),
-                                        flags=cv2.INTER_LINEAR)
+                                        dsize=cv2.boundingRect(cont_max)[2:])
         return frame
+
+    def get_corr_corners(self, contour: np.ndarray) -> np.ndarray:
+        """
+        Get corners to warp ROI to.
+        """
+        x, y, w, h = cv2.boundingRect(contour)
+        print(x, y, w, h)
+        corners = self.sort_correction_corners(np.array(
+            [[[0, y]], [[w, y]], [[w, h]], [[0, h]]]))
+        return corners
 
     def get_approx_corners(self, contour: np.ndarray) -> np.ndarray:
         """
@@ -123,22 +125,20 @@ class ManageFrames:
         - numpy.ndarray or None: An array containing the approximated corners 
         of the contour if it is a quadrilateral shape; otherwise, None.
         """
-        eps_vals = [0.99, 0.9, 0.5, 0.4, 0.3, 0.1,
-                    0.09, 0.08, 0.07, 0.06,
-                    0.05, 0.04, 0.025, 0.030,
-                    0.02, 0.015, 0.01, 0.009,
-                    0.005, 0.001, 0.0005, 0.0001]
+        eps_vals = [0.0001, 0.0005, 0.001, 0.005, 0.009,
+                    0.01, 0.015, 0.02, 0.025, 0.03,
+                    0.035, 0.04, 0.045, 0.05, 0.055,
+                    0.06, 0.065, 0.07, 0.075, 0.08,
+                    0.085, 0.09, 0.095, 0.1, 0.13,
+                    0.15, 0.2, 0.25, 0.3, 0.35,
+                    0.4, 0.045, 0.5, 0.055, 0.9]
         for eps_val in eps_vals:
             epsilon = eps_val * cv2.arcLength(contour, True)
             approx = cv2.approxPolyDP(contour, epsilon, True)
-            print(f'{eps_val}-{len(approx)}')
-            print(approx)
             if len(approx) == 4:
-                print(f'\napprox{type(approx)}: \n{approx}\n')
+                print(eps_val)
                 approx = self.sort_correction_corners(approx)
-                print(f'\napprox sorted{type(approx)}: \n{approx}\n')
                 return approx
-        print('\nno approx?\n')
 
     def sort_correction_corners(self, corners) -> list:
         """
