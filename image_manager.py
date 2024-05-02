@@ -96,10 +96,9 @@ class ManageFrames:
         points_2 = self.get_corr_corners(cont_max)
 
         if all(isinstance(p, np.ndarray) for p in [points_1, points_2]):
-            matrix = cv2.getPerspectiveTransform(np.float32(points_1),
-                                                 np.float32(points_2),
-                                                 cv2.DECOMP_SVD)
-            frame = cv2.warpPerspective(frame, matrix,
+            homography, _ = cv2.findHomography(points_1, points_2)
+            homography = homography.astype(np.float64)
+            frame = cv2.warpPerspective(frame, homography,
                                         dsize=cv2.boundingRect(cont_max)[2:])
         return frame
 
@@ -110,7 +109,7 @@ class ManageFrames:
         x, y, w, h = cv2.boundingRect(contour)
         print(x, y, w, h)
         corners = self.sort_correction_corners(np.array(
-            [[[0, y]], [[w, y]], [[w, h]], [[0, h]]]))
+            [[[0, y]], [[w, y]], [[w, h]], [[0, h]]]), contour)
         return corners
 
     def get_approx_corners(self, contour: np.ndarray) -> np.ndarray:
@@ -137,20 +136,32 @@ class ManageFrames:
             approx = cv2.approxPolyDP(contour, epsilon, True)
             if len(approx) == 4:
                 print(eps_val)
-                approx = self.sort_correction_corners(approx)
+                approx = self.sort_correction_corners(approx, contour)
                 return approx
 
-    def sort_correction_corners(self, corners) -> list:
+    def get_corr_max_min(self, contour: np.ndarray) -> np.ndarray:
+        """
+        Return pairs where height and width is the largest and smallest.
+        """
+        max_x = max(contour, key=lambda x: x[0][0])
+        min_x = min(contour, key=lambda x: x[0][0])
+        max_y = max(contour, key=lambda x: x[0][1])
+        min_y = min(contour, key=lambda x: x[0][1])
+        print(max_x, max_y, min_x, min_y)
+        return max_x, max_y, min_x, min_y
+
+    def sort_correction_corners(self, corners, contour) -> list:
         """
         Make sure corners are in the same order before perspective transform.
-        Returns  corners of square, clockwise, with top left corner first. 
+        Returns  corners of square, clockwise, with top left corner first.
         """
         sorted_horizontal = sorted(corners, key=lambda x: x[0][0])
         top_left = sorted(sorted_horizontal[:2], key=lambda x: x[0][1])[0]
         bottom_left = sorted(sorted_horizontal[:2], key=lambda x: x[0][1])[1]
         top_right = sorted(sorted_horizontal[2:], key=lambda x: x[0][1])[0]
         bottom_right = sorted(sorted_horizontal[2:], key=lambda x: x[0][1])[1]
-        return np.array([top_left, bottom_left, top_right, bottom_right])
+        max_x, max_y, min_x, min_y = self.get_corr_max_min(contour)
+        return np.array([top_left, max_x, top_right, max_y, bottom_right, min_x, bottom_left, min_y])
 
     def enhance_class_names(self) -> List[str]:
         """
