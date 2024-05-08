@@ -4,8 +4,6 @@ threshold, cropping, enhancement.
 """
 from groundingdino.util.inference import Model
 from segment_anything import sam_model_registry, SamPredictor
-#from transformers import AutoProcessor, GroundingDinoForObjectDetection
-from IPython.display import display, HTML
 from typing import List
 import pytesseract as pt
 import supervision as sv
@@ -32,7 +30,7 @@ class ManageFrames:
             Model(
                 '.venv/lib/python3.11/site-packages/groundingdino/config/GroundingDINO_SwinT_OGC.py',
                 '.venv/lib/python3.11/site-packages/groundingdino/weights/groundingdino_swint_ogc.pth')
-        self.classes = ['lines of text']
+        self.classes = ['all rows of text']
         self.box_threshold = 0.35
         self.text_threshold = 0.25
         self.sam_model = sam_model_registry[sam_encoder_version](
@@ -46,9 +44,6 @@ class ManageFrames:
             classes=self.enhance_class_names(),
             box_threshold=self.box_threshold,
             text_threshold=self.text_threshold)
-        print(f'type:{type(detections)} len:{len(detections)}')
-        print(f'detections: {detections}')
-        #detections.class_id
         detections.mask = self.segment_label(frame, detections.xyxy)
         mask_annotator = sv.MaskAnnotator()
         empty_image = np.zeros((frame.shape), dtype=np.uint8)
@@ -57,7 +52,9 @@ class ManageFrames:
                                                         opacity=1),
                                 cv2.COLOR_BGR2GRAY)
         img = self.distort_perspective(frame, roi_mask)
-        cv2.imwrite('img_disorted.png', img)
+        if isinstance(img, np.ndarray):
+            return img
+        return frame
 
     def segment_label(self, frame, xyxy: np.ndarray) -> np.ndarray:
         """
@@ -79,6 +76,7 @@ class ManageFrames:
         """
         Uses mask to detect ROI and return ROI with perspective corrected.
         """
+        f2 = frame.copy()
         _, mask_binary = cv2.threshold(mask, mask.mean(), mask.max(),
                                        cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(mask_binary, cv2.RETR_LIST,
@@ -88,33 +86,37 @@ class ManageFrames:
 
         frame = frame[y-int(0.05*h):y+h+int(0.05*h),
                       x-int(0.05*w):x+w+int(0.05*w)]
+        if frame.size == 0:
+            return False
         cv2.imwrite('frame_c.png', frame)
         mask = mask_binary[y-int(0.05*h):y+h+int(0.05*h),
                            x-int(0.05*w):x+w+int(0.05*w)]
+        cv2.imwrite('mask.png', mask)
         contours, _ = cv2.findContours(mask, cv2.RETR_LIST,
                                        cv2.CHAIN_APPROX_SIMPLE)
+        if len(contours) == 0:
+            return False
         cont_max = max(contours, key=cv2.contourArea)
 
-        points_1 = self.get_approx_corners(cont_max)
-        points_2 = self.get_corr_corners(cont_max)
+        points_1 = cont_max
+        points_2 = self.get_correction_matrix(cont_max)
 
         if all(isinstance(p, np.ndarray) for p in [points_1, points_2]):
             homography, _ = cv2.findHomography(points_1, points_2)
             homography = homography.astype(np.float64)
             frame = cv2.warpPerspective(frame, homography,
-                                        dsize=cv2.boundingRect(cont_max)[2:])
+                                        dsize=(y+h+int(0.01*h),
+                                               x+w+int(0.1*w)))
+            print(frame.shape)
+            for a, b in zip(points_1, points_2):
+                a = tuple(a[0])
+                b = tuple(b)
+                print(a, b)
+                cv2.circle(f2, a, 2, (255, 0, 0), 2)
+                cv2.circle(f2, b, 2, (0, 255, 0), 2)
             cv2.imwrite('frame_w.png', frame)
+            cv2.imwrite('frame_correctiondots.png', f2)
         return frame
-
-    def get_corr_corners(self, contour: np.ndarray) -> np.ndarray:
-        """
-        Get corners to warp ROI to.
-        """
-        x, y, w, h = cv2.boundingRect(contour)
-        print(x, y, w, h)
-        corners = self.sort_correction_corners(np.array(
-            [[[0, y]], [[w, y]], [[w, h]], [[0, h]]]), contour)
-        return corners
 
     def get_approx_corners(self, contour: np.ndarray) -> np.ndarray:
         """
@@ -125,7 +127,7 @@ class ManageFrames:
         - contour (numpy.ndarray): A contour represented as a numpy array.
 
         Returns:
-        - numpy.ndarray or None: An array containing the approximated corners 
+        - numpy.ndarray or None: An array containing the approximated corners
         of the contour if it is a quadrilateral shape; otherwise, None.
         """
         eps_vals = [0.0001, 0.0005, 0.001, 0.005, 0.009,
@@ -139,8 +141,6 @@ class ManageFrames:
             epsilon = eps_val * cv2.arcLength(contour, True)
             approx = cv2.approxPolyDP(contour, epsilon, True)
             if len(approx) == 4:
-                print(eps_val)
-                approx = self.sort_correction_corners(approx, contour)
                 return approx
 
     def get_corr_max_min(self, contour: np.ndarray) -> np.ndarray:
@@ -151,7 +151,6 @@ class ManageFrames:
         min_x = min(contour, key=lambda x: x[0][0])
         max_y = max(contour, key=lambda x: x[0][1])
         min_y = min(contour, key=lambda x: x[0][1])
-        print(max_x, max_y, min_x, min_y)
         return max_x, max_y, min_x, min_y
 
     def sort_correction_corners(self, corners, contour) -> list:
@@ -164,8 +163,68 @@ class ManageFrames:
         bottom_left = sorted(sorted_horizontal[:2], key=lambda x: x[0][1])[1]
         top_right = sorted(sorted_horizontal[2:], key=lambda x: x[0][1])[0]
         bottom_right = sorted(sorted_horizontal[2:], key=lambda x: x[0][1])[1]
-        max_x, max_y, min_x, min_y = self.get_corr_max_min(contour)
-        return np.array([top_left, max_x, top_right, max_y, bottom_right, min_x, bottom_left, min_y])
+        #max_x, max_y, min_x, min_y = self.get_corr_max_min(contour)
+        #return np.array([top_left, max_x, top_right, max_y,
+        #                 bottom_right, min_x, bottom_left, min_y])
+        return np.array([top_left, top_right, bottom_right, bottom_left])
+
+    def get_correction_matrix(self, contour: np.ndarray) -> np.ndarray:
+        """
+        Get an np.ndarray of len(contour) to describe the correction matrix.
+        Matches each contour point to closest line in min_area rect.
+        matches contour points present in corners to corners in min_area rect.
+        Matches along horizontal lines keep their width values and
+        modifies their height value
+        Matches along vertical lines keep their height value
+        and modifies their width values.
+
+        input values:
+            corners(np.ndarray, len 4):
+                approximation of corners, from self.get_approx_corners.
+            contour(np.ndarray):
+                contour of area to create correction points for.
+        output:
+            correction_points(np.ndarray, len(contour)):
+                correction points to use in correction matrix creation.
+        """
+        left, up, w, h = cv2.boundingRect(contour)
+        down = up+h
+        right = left+w
+        corners = self.get_approx_corners(contour)
+
+        correction_points = []
+        for point in contour:
+            point = list(point[0])
+            if point in corners:
+                _, coord = min(
+                    {'up_left':
+                     [math.dist(point, [left, up]),
+                      (left, up)],
+                     'up_right':
+                     [math.dist(point, [left+w, up]),
+                      (left+w, up)],
+                     'down_left':
+                     [math.dist(point, [left, up+h]),
+                      (left, up+h)],
+                     'down_right':
+                     [math.dist(point, [left+w, up+h]),
+                      (left+w, up+h)]}.items(),
+                    key=lambda item: item[1][0])
+                correction_points.append(coord[1])
+                continue
+            else:
+                _, coord = min({'d_left': [abs(point[0] - left),
+                                           (left, point[1])],
+                                'd_right': [abs(right - point[0]),
+                                            (right, point[1])],
+                                'd_up': [abs(point[1] - up),
+                                         (point[0], up)],
+                                'd_down': [abs(down - point[1]),
+                                           (point[0], down)]}.items(),
+                               key=lambda item: item[1][0])
+                correction_points.append(coord[1])
+
+        return np.array(correction_points)
 
     def enhance_class_names(self) -> List[str]:
         """
@@ -173,7 +232,7 @@ class ManageFrames:
         Returns updated list.
         """
         return [
-            f"all full {class_name}s"
+            f"{class_name}"
             for class_name
             in self.classes
         ]

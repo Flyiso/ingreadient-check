@@ -38,8 +38,6 @@ class ManagePanorama:
                     return True
                 if len(self.frames) == 2:
                     self.frame_manager.set_manager_values(self.frames[1])
-                    #self.base, self.base_mask = \
-                    #    self.frame_manager.prepare_frame(self.frames[1])
                     print('New First Frame')
                     self.frames.pop(0)
                     return True
@@ -56,19 +54,17 @@ class ManagePanorama:
             self.base = frame
             print('New Merge: First frame')
             self.frame_manager.set_manager_values(self.base)
-            #self.base, self.base_mask = self.frame_manager.prepare_frame(frame)
             return True
 
         # stitch:
-        #frame, mask = self.frame_manager.prepare_frame(frame)
-        status, result = self.stitcher.stitch([self.base, frame])
+        frame = self.frame_manager.find_label(frame)
+        base = self.frame_manager.find_label(self.base)
+        status, result = self.stitcher.stitch([base, frame])
         if status == cv2.STITCHER_OK:
             print('New Merge: Success')
-            self.frame_manager.find_label(frame)
             self.base = result
-            #self.base_mask = self.frame_manager.return_frame_mask(result)
             self.merge_counter += 1
-
+            cv2.imwrite('merged.png', result)
             return True
         self.fail_counter += 1
         print('New Merge: Failed')
