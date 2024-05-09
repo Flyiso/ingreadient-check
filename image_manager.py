@@ -102,21 +102,21 @@ class ManageFrames:
         points_2 = self.get_correction_matrix(cont_max)
 
         if all(isinstance(p, np.ndarray) for p in [points_1, points_2]):
-            homography, _ = cv2.findHomography(points_1, points_2)
+            homography, _ = cv2.findHomography(points_1, points_2, method=cv2.LMEDS)
             homography = homography.astype(np.float64)
             frame = cv2.warpPerspective(frame, homography,
-                                        dsize=(y+h+int(0.01*h),
-                                               x+w+int(0.1*w)))
+                                        dsize=(x+w+int(0.1*w),
+                                               y+h+int(0.01*h)))
             for a, b in zip(points_1, points_2):
                 a = tuple(a[0])
                 b = tuple(b)
-                print(a, b)
                 cv2.circle(f2, a, 2, (255, 0, 0), 2)
                 cv2.circle(f2, b, 2, (0, 255, 0), 2)
             cv2.imwrite('frame_w.png', frame)
             cv2.imwrite('frame_correctiondots.png', f2)
         return frame
 
+                                               
     def get_approx_corners(self, contour: np.ndarray) -> np.ndarray:
         """
         Approximates the corners of a given contour,

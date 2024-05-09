@@ -58,7 +58,7 @@ class ManagePanorama:
 
         # stitch:
         frame = self.frame_manager.find_label(frame)
-        base = self.frame_manager.find_label(self.base)
+        base = self.base
         status, result = self.stitcher.stitch([base, frame])
         if status == cv2.STITCHER_OK:
             print('New Merge: Success')
