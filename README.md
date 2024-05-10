@@ -15,6 +15,8 @@ TODO: Instead of trying the next image when merge fails, try to
       merge add and instead merge more than 2 frames at a time
       (and put limit to max n of frames in each merge?)
 TODO: try panorama mode when scans not working?
+TODO: try to also warp img before merge- 
+      take both images into consideration and adjust accordingly?
 
 TODO: explore how/if to customize stitcher.
 
@@ -31,6 +33,8 @@ TODO: get mask to cover possible shiny areas of image before merge?
 TODO: error when no contour found- create early escape/error management(check DINO)
 
 TODO: Manage error in stitcher, try to add more images.
+
+TODO: ad text read method for when full image is finally merged.
 
 2) add option to add label by photo for fully visible labels.
 
