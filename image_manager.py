@@ -38,7 +38,7 @@ class ManageFrames:
         self.sam_predictor = SamPredictor(self.sam_model)
 
     def find_label(self, frame):
-        cv2.imwrite('frame.jpeg', frame)
+        #remove?: cv2.imwrite('frame.jpeg', frame)
         detections = self.dino_model.predict_with_classes(
             image=frame,
             classes=self.enhance_class_names(),
@@ -53,6 +53,7 @@ class ManageFrames:
                                 cv2.COLOR_BGR2GRAY)
         img = self.distort_perspective(frame, roi_mask)
         if isinstance(img, np.ndarray):
+            img = self.enhance_frame(img)
             return img
         return frame
 
@@ -235,6 +236,18 @@ class ManageFrames:
             for class_name
             in self.classes
         ]
+
+    def enhance_frame(self,
+                      frame: np.ndarray) -> np.ndarray:
+        """
+        Enhances frame to make it easier to process
+        by stitcher and pytesseract.
+        returns enhanced frame.
+        """
+        # hue thresh to correct light
+        # grayscale?
+        # sharpen? bilateral blur?s
+        return frame
 
     def set_manager_values(self, frame):
         """
