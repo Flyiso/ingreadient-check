@@ -76,7 +76,6 @@ class ManageFrames:
         """
         Uses mask to detect ROI and return ROI with perspective corrected.
         """
-        f2 = frame.copy()
         _, mask_binary = cv2.threshold(mask, mask.mean(), mask.max(),
                                        cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(mask_binary, cv2.RETR_LIST,
@@ -84,16 +83,17 @@ class ManageFrames:
         cont_max = max(contours, key=cv2.contourArea)
         x, y, w, h = cv2.boundingRect(cont_max)
 
-        #frame = frame[y-int(0.05*h):y+h+int(0.05*h),
-        #              x-int(0.05*w):x+w+int(0.05*w)]
+        frame = frame[y:y+h, x:x+w]
+        f2 = frame.copy()
         if frame.size == 0:
             return False
         cv2.imwrite('frame_c.png', frame)
-        #mask = mask_binary[y-int(0.05*h):y+h+int(0.05*h),
-        #                   x-int(0.05*w):x+w+int(0.05*w)]
+        mask = mask_binary[y:y+h, x:x+w]
         cv2.imwrite('mask.png', mask)
         contours, _ = cv2.findContours(mask, cv2.RETR_LIST,
                                        cv2.CHAIN_APPROX_SIMPLE)
+        #sq_mask = np.zeros_like(frame)
+        #cv2.rectangle(sq_mask, )
         if len(contours) == 0:
             return False
         cont_max = max(contours, key=cv2.contourArea)
@@ -102,11 +102,12 @@ class ManageFrames:
         points_2 = self.get_correction_matrix(cont_max)
 
         if all(isinstance(p, np.ndarray) for p in [points_1, points_2]):
-            homography, _ = cv2.findHomography(points_1, points_2, method=cv2.LMEDS)
+            homography, _ = cv2.findHomography(points_1, points_2,
+                                               method=cv2.LMEDS)
             homography = homography.astype(np.float64)
             frame = cv2.warpPerspective(frame, homography,
-                                        dsize=(x+w+int(0.1*w),
-                                               y+h+int(0.01*h)))
+                                        dsize=(w, h))
+            print(frame.shape)
             for a, b in zip(points_1, points_2):
                 a = tuple(a[0])
                 b = tuple(b)
@@ -116,7 +117,6 @@ class ManageFrames:
             cv2.imwrite('frame_correctiondots.png', f2)
         return frame
 
-                                               
     def get_approx_corners(self, contour: np.ndarray) -> np.ndarray:
         """
         Approximates the corners of a given contour,

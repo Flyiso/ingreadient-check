@@ -33,7 +33,7 @@ class ManagePanorama:
         """
         self.frames.append(frame)
         if len(self.frames) % self.interval == 0 or self.base is None:
-            for x in range(1, self.interval+1):
+            for x in range(1, self.interval):
                 if self.stitch_frames(self.frames[-x]):
                     return True
                 if len(self.frames) == 2:
@@ -51,7 +51,7 @@ class ManagePanorama:
         """
         # make sure there is a frame base
         if self.base is None:
-            self.base = frame
+            self.base = self.frame_manager.find_label(frame)
             print('New Merge: First frame')
             self.frame_manager.set_manager_values(self.base)
             return True
@@ -66,6 +66,8 @@ class ManagePanorama:
             self.merge_counter += 1
             cv2.imwrite('merged.png', result)
             return True
+        else:
+            print(status)
         self.fail_counter += 1
         print('New Merge: Failed')
         return False

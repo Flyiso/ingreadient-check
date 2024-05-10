@@ -18,13 +18,7 @@ TODO: create mask and enhancement methods for image management.
 TODO: make it runable on mobile devices.
       (less pytesseract? more efficient ways to find text region? image segmentation? huggingface?)
 
-TODO: crop output/detected label from DINO
-TODO: Perspective warp on GroundedDINO/SAM output
 TODO: enhance images before merge?
-
-TODO: ROI returning(image_manager/distort_perspective) fit roi in mask -> distort roi(in mask) to rectangle w height and width of mask.
-
-TODO: Instead of perspective transform just by corners, try  to find largest and smallest x and y  among the sides of the label, and make it  8 correction points.
 
 TODO: error when no contour found- create early escape/error management(check DINO)
 TODO: explore mask in corr_points/matrix
