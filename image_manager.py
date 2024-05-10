@@ -104,9 +104,12 @@ class ManageFrames:
 
         if all(isinstance(p, np.ndarray) for p in [points_1, points_2]):
             homography, _ = cv2.findHomography(points_1, points_2,
-                                               method=cv2.LMEDS)
+                                               method=cv2.RANSAC)
             homography = homography.astype(np.float64)
             frame = cv2.warpPerspective(frame, homography,
+                                        flags=cv2.INTER_CUBIC,
+                                        borderMode=cv2.BORDER_CONSTANT,
+                                        borderValue=(0, 0, 0),
                                         dsize=(w, h))
             print(frame.shape)
             for a, b in zip(points_1, points_2):
@@ -237,18 +240,6 @@ class ManageFrames:
             in self.classes
         ]
 
-    def enhance_frame(self,
-                      frame: np.ndarray) -> np.ndarray:
-        """
-        Enhances frame to make it easier to process
-        by stitcher and pytesseract.
-        returns enhanced frame.
-        """
-        # hue thresh to correct light
-        # grayscale?
-        # sharpen? bilateral blur?s
-        return frame
-
     def set_manager_values(self, frame):
         """
         set values for frame manager threshold
@@ -272,18 +263,30 @@ class ManageFrames:
                                 lang=lang, output_type=output_type)
         return data
 
-    def prepare_frame(self, frame: np.ndarray) -> np.ndarray:
+    def enhance_frame(self,
+                      frame: np.ndarray) -> np.ndarray:
         """
-        Use methods to enhance, crop and create mask for input
-        frame, return input frame and mask for frame.
+        Enhances frame to make it easier to process
+        by stitcher and pytesseract.
+        returns enhanced frame.
         """
-        pass
+        # hue thresh to correct light
+        frame = self.enhance_text_lightness(frame)
+        # grayscale?
+        # sharpen? bilateral blur?s
+        return frame
 
-    def return_frame_mask(self, frame: np.ndarray) -> np.ndarray:
+    def enhance_text_lightness(self, frame):
         """
-        Return mask for frame
+        Enhance text by perceptual lightness
         """
-        pass
+        frame2 = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        clahe = cv2.createCLAHE(clipLimit=1.7, tileGridSize=(5, 5))
+        frame_planes = list(cv2.split(frame2))
+        frame_planes[0] = clahe.apply(frame_planes[0])
+        frame2 = cv2.merge(frame_planes)
+        frame2 = cv2.cvtColor(frame2, cv2.COLOR_LAB2BGR)
+        return frame2
 
     def set_threshold_values(self, frame, frame_data: dict):
         """

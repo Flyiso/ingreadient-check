@@ -11,17 +11,26 @@ TODO: Test label_video_reader with more videos and images to modify and make app
 
 TODO: control of distance between images in each merge?.
 
+TODO: Instead of trying the next image when merge fails, try to
+      merge add and instead merge more than 2 frames at a time
+      (and put limit to max n of frames in each merge?)
+TODO: try panorama mode when scans not working?
+
 TODO: explore how/if to customize stitcher.
 
-TODO: create mask and enhancement methods for image management.
 
 TODO: make it runable on mobile devices.
       (less pytesseract? more efficient ways to find text region? image segmentation? huggingface?)
 
 TODO: enhance images before merge?
+  DONE: lightness.
+  TODO?: blur? bilateral?
+  TODO?: enhance/increase contrast of letters
+TODO: get mask to cover possible shiny areas of image before merge?
 
 TODO: error when no contour found- create early escape/error management(check DINO)
-TODO: explore mask in corr_points/matrix
+
+TODO: Manage error in stitcher, try to add more images.
 
 2) add option to add label by photo for fully visible labels.
 
