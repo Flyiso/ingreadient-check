@@ -66,8 +66,9 @@ class ManagePanorama:
             self.merge_counter += 1
             cv2.imwrite('merged.png', result)
             return True
-        else:
+        elif status == 1:
             print(status)
+            # Not enough images error
         self.fail_counter += 1
         print('New Merge: Failed')
         return False
