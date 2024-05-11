@@ -19,10 +19,17 @@ class ManagePanorama:
         self.interval = interval
         self.image_management = None
         self.frames = []
+        self.to_stitch = []  # test of new merge method
         self.base = False
         self.merge_counter = 0
         self.fail_counter = 0
         self.stitcher = cv2.Stitcher.create(1)
+        self.stitcher.setWaveCorrection(cv2.WARP_POLAR_LINEAR)
+        self.stitcher.setCompositingResol(0.9)
+        self.stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
+        self.stitcher.setPanoConfidenceThresh(0.99)
+        self.stitcher.setRegistrationResol(0.9)
+        self.stitcher.setSeamEstimationResol(0.9)
         self.frame_manager = frame_manager
         self.max_merge = 10  # CONNECTED TO TEST OF NEW MERGE FLOW
 
@@ -45,23 +52,22 @@ class ManagePanorama:
         if self.base is False:
             self.base = self.frame_manager.find_label(frame)
             print('New Merge: First frame')
+            self.to_stitch.append(self.base)
             self.frame_manager.set_manager_values(self.base)
             return True
-        to_stitch = [self.base]
+        #to_stitch = [self.base]
         status = None
         for frame in self.frames[::-1]:
             frame = self.frame_manager.find_label(frame)
             if frame is False:
                 continue
-            to_stitch.append(frame)
-            status, result = self.stitcher.stitch(to_stitch)
+            self.to_stitch.append(frame)
+            status, result = self.stitcher.stitch(self.to_stitch)
             if status == cv2.Stitcher_OK:
                 print('New Merge: Success')
                 self.base = result
                 self.merge_counter += 1
                 cv2.imwrite('merged.png', result)
+                self.to_stitch[1] = self.base
                 return True
             print('New Merge: Failed')
-            if len(to_stitch) > self.max_merge:
-                print('maximum merge reached.')
-                return False

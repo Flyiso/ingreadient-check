@@ -78,7 +78,7 @@ class ManageFrames:
         return np.array(result_masks)
 
     def distort_perspective(self, frame: np.ndarray,
-                            mask: np.ndarray) -> np.ndarray:
+                            mask: np.ndarray) -> np.ndarray | bool:
         """
         Uses mask to detect ROI and return ROI with perspective corrected.
         """
@@ -86,6 +86,8 @@ class ManageFrames:
                                        cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(mask_binary, cv2.RETR_LIST,
                                        cv2.CHAIN_APPROX_SIMPLE)
+        if len(contours) < 1:
+            return False
         cont_max = max(contours, key=cv2.contourArea)
         x, y, w, h = cv2.boundingRect(cont_max)
 
