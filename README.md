@@ -14,12 +14,14 @@ TODO: control of distance between images in each merge?.
 TODO: Instead of trying the next image when merge fails, try to
       merge add and instead merge more than 2 frames at a time
       (and put limit to max n of frames in each merge?)
+      -seems to work better.
+      TODO?: first sections of merged result disappear later on.
+             use mask to avoid? or solve in any other way?
 TODO: try panorama mode when scans not working?
 TODO: try to also warp img before merge- 
       take both images into consideration and adjust accordingly?
 
 TODO: explore how/if to customize stitcher.
-
 
 TODO: make it runable on mobile devices.
       (less pytesseract? more efficient ways to find text region? image segmentation? huggingface?)

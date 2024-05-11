@@ -37,8 +37,13 @@ class ManageFrames:
             checkpoint=sam_checkpoint_path).to(device=device)
         self.sam_predictor = SamPredictor(self.sam_model)
 
-    def find_label(self, frame):
-        #remove?: cv2.imwrite('frame.jpeg', frame)
+    def find_label(self, frame) -> np.ndarray | bool:
+        """
+        Finds label on product, calls methods to try to 
+        correct its perspective, and enhances it.
+        Returns corrected frame if successfull,
+        else returns False
+        """
         detections = self.dino_model.predict_with_classes(
             image=frame,
             classes=self.enhance_class_names(),
@@ -55,7 +60,7 @@ class ManageFrames:
         if isinstance(img, np.ndarray):
             img = self.enhance_frame(img)
             return img
-        return frame
+        return False
 
     def segment_label(self, frame, xyxy: np.ndarray) -> np.ndarray:
         """
