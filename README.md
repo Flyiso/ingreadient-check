@@ -10,6 +10,8 @@ TODO: Test label_video_reader with more videos and images to modify and make app
       usable for all kinds of ingredients lists.
 
 TODO: control of distance between images in each merge?.
+TODO: Try to use panorama mode for stitcher every x
+      merge(with high thresh?) to avoid loosing first img section
 
 TODO: Instead of trying the next image when merge fails, try to
       merge add and instead merge more than 2 frames at a time
