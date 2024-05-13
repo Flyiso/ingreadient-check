@@ -25,11 +25,11 @@ class ManageFrames:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         sam_encoder_version = 'vit_h'
         sam_checkpoint_path = 'weights/sam_vit_h_4b8939.pth'
+        dino_dir = '.venv/lib/python3.11/site-packages/groundingdino/'
         self.pt_config = pt_config
-        self.dino_model = \
-            Model(
-                '.venv/lib/python3.11/site-packages/groundingdino/config/GroundingDINO_SwinT_OGC.py',
-                '.venv/lib/python3.11/site-packages/groundingdino/weights/groundingdino_swint_ogc.pth')
+        self.dino_model = Model(
+            f'{dino_dir}config/GroundingDINO_SwinT_OGC.py',
+            f'{dino_dir}weights/groundingdino_swint_ogc.pth')
         self.classes = ['all rows of text']
         self.box_threshold = 0.35
         self.text_threshold = 0.25
@@ -39,7 +39,7 @@ class ManageFrames:
 
     def find_label(self, frame) -> np.ndarray | bool:
         """
-        Finds label on product, calls methods to try to 
+        Finds label on product, calls methods to try to
         correct its perspective, and enhances it.
         Returns corrected frame if successfull,
         else returns False
@@ -95,13 +95,12 @@ class ManageFrames:
         f2 = frame.copy()
         if frame.size == 0:
             return False
-        cv2.imwrite('frame_c.png', frame)
+        cv2.imwrite('progress_images/frame_ROI.png', frame)
         mask = mask_binary[y:y+h, x:x+w]
-        cv2.imwrite('mask.png', mask)
+        cv2.imwrite('progress_images/mask.png', mask)
         contours, _ = cv2.findContours(mask, cv2.RETR_LIST,
                                        cv2.CHAIN_APPROX_SIMPLE)
-        #sq_mask = np.zeros_like(frame)
-        #cv2.rectangle(sq_mask, )
+
         if len(contours) == 0:
             return False
         cont_max = max(contours, key=cv2.contourArea)
@@ -124,8 +123,8 @@ class ManageFrames:
                 b = tuple(b)
                 cv2.circle(f2, a, 2, (255, 0, 0), 2)
                 cv2.circle(f2, b, 2, (0, 255, 0), 2)
-            cv2.imwrite('frame_w.png', frame)
-            cv2.imwrite('frame_correctiondots.png', f2)
+            cv2.imwrite('progress_images/frame_warped.png', frame)
+            cv2.imwrite('progress_images/frame_corrections.png', f2)
         return frame
 
     def get_approx_corners(self, contour: np.ndarray) -> np.ndarray:
@@ -173,9 +172,7 @@ class ManageFrames:
         bottom_left = sorted(sorted_horizontal[:2], key=lambda x: x[0][1])[1]
         top_right = sorted(sorted_horizontal[2:], key=lambda x: x[0][1])[0]
         bottom_right = sorted(sorted_horizontal[2:], key=lambda x: x[0][1])[1]
-        #max_x, max_y, min_x, min_y = self.get_corr_max_min(contour)
-        #return np.array([top_left, max_x, top_right, max_y,
-        #                 bottom_right, min_x, bottom_left, min_y])
+
         return np.array([top_left, top_right, bottom_right, bottom_left])
 
     def get_correction_matrix(self, contour: np.ndarray) -> np.ndarray:

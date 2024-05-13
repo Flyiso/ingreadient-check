@@ -55,7 +55,6 @@ class ManagePanorama:
             self.to_stitch.append(self.base)
             self.frame_manager.set_manager_values(self.base)
             return True
-        #to_stitch = [self.base]
         status = None
         for frame in self.frames[::-1]:
             frame = self.frame_manager.find_label(frame)
@@ -67,7 +66,7 @@ class ManagePanorama:
                 print('New Merge: Success')
                 self.base = result
                 self.merge_counter += 1
-                cv2.imwrite('merged.png', result)
+                cv2.imwrite('progress_images/merged.png', result)
                 self.to_stitch[1] = self.base
                 return True
             print('New Merge: Failed')
