@@ -109,7 +109,7 @@ class ManageFrames:
         points_2 = self.get_correction_matrix(cont_max)
 
         if all(isinstance(p, np.ndarray) for p in [points_1, points_2]):
-            homography, _ = cv2.findHomography(points_1, points_2,
+            homography, _ = cv2.findHomography(points_2, points_1,
                                                method=cv2.RANSAC)
             homography = homography.astype(np.float64)
             frame = cv2.warpPerspective(frame, homography,
@@ -324,3 +324,18 @@ class ManageFrames:
                                                      cv2.COLOR_BGR2GRAY),
                                         axis=(0, 1)).astype(int)*1.35)
         print(self.gs_threshold1, self.gs_threshold2)
+
+    @staticmethod
+    def get_masks(frames: list) -> list:
+        """
+        Return masks for input frames.
+        """
+        masks = []
+        n_frames = len(frames)/0.5
+        for frame_index, frame in enumerate(frames):
+            start_index = int((frame.shape[0]/n_frames)*frame_index)
+            end_index = int((frame.shape[0]/n_frames)*(frame_index+1))
+            mask = np.zeros_like(frame, dtype=np.uint8)
+            mask[start_index:end_index, :] = 255
+            masks.append(mask)
+        return masks

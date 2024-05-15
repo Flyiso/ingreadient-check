@@ -2,6 +2,7 @@
 File to test different ways to make merging of images work better.
 """
 import cv2
+import numpy as np
 from image_manager import ManageFrames
 from panorama_manager import ManagePanorama
 
@@ -63,7 +64,7 @@ class RecordLabel:
         cv2.destroyAllWindows()
         self.save_image('merge_result', self.panorama_manager.base)
 
-    def process_image(self, frame):
+    def process_image(self, frame: np.ndarray):
         """
         Apply correction, enhancement
         and detection methods on frame
@@ -82,8 +83,12 @@ class RecordLabel:
               failed: {self.panorama_manager.fail_counter}')
         print(f'total frames: {len(self.panorama_manager.frames)}\
               interval: {self.panorama_manager.interval}')
+        last_frame = self.panorama_manager.detect_text()
+        for idx_nr, frame in enumerate(self.panorama_manager.to_stitch):
+            self.save_image(f'merge_queue_{idx_nr}', frame)
+        self.save_image('Merged_result', last_frame)
 
-    def set_video_values(self, frame):
+    def set_video_values(self, frame: np.ndarray):
         """
         get data from image to uniform future
         processing methods.
@@ -91,8 +96,6 @@ class RecordLabel:
         self.height = int(frame.shape[0]*self.adjust_h)
         self.width = int(frame.shape[1]*self.adjust_w)
 
-    def save_image(self, filename: str, frame):
-        merges = self.panorama_manager.merge_counter
+    def save_image(self, filename: str, frame: np.ndarray):
         cv2.imwrite(
-            f'{self.img_dir}-{filename}_{merges}.png',
-            frame)
+            f'{self.img_dir}{filename}.png', frame)
