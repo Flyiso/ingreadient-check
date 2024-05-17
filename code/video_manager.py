@@ -40,6 +40,7 @@ class RecordLabel:
         loops through images and
         defines how to preprocess them
         """
+        last_frame = None
         self.frame_n = 0
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
@@ -47,7 +48,7 @@ class RecordLabel:
 
             if not ret:
                 self.merge_loops = 0
-                self.end_video()
+                self.end_video(last_frame)
                 break
 
             if self.frame_n == 0:
@@ -57,6 +58,7 @@ class RecordLabel:
             self.frame_n += 1
 
             cv2.imshow('frame', frame)
+            last_frame = frame
             if cv2.waitKey(25) & 0xFF == 27:
                 break
 
@@ -74,10 +76,12 @@ class RecordLabel:
         self.frame_n = len(self.panorama_manager.frames)
         return frame
 
-    def end_video(self):
+    def end_video(self, last_frame: bool | np.ndarray):
         """
         final cleanup.
         """
+        if last_frame is not False:
+            self.panorama_manager.add_more_frames(last_frame)
         print('DONE!')
         print(f'merged: {self.panorama_manager.merge_counter}\
               failed: {self.panorama_manager.fail_counter}')

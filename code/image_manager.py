@@ -326,16 +326,20 @@ class ManageFrames:
         print(self.gs_threshold1, self.gs_threshold2)
 
     @staticmethod
-    def get_masks(frames: list) -> list:
+    def get_masks(frames: list, merge_counter: int = 0) -> list:
         """
         Return masks for input frames.
         """
         masks = []
-        n_frames = len(frames)/0.5
         for frame_index, frame in enumerate(frames):
-            start_index = int((frame.shape[0]/n_frames)*frame_index)
-            end_index = int((frame.shape[0]/n_frames)*(frame_index+1))
-            mask = np.zeros_like(frame, dtype=np.uint8)
-            mask[start_index:end_index, :] = 255
+            mask = np.zeros_like(frame)
+            if frame_index != 0:
+                mask[:, frame.shape[1]//3: (frame.shape[1]//3)*2] = 1
+                print('middle mask')
+            else:
+                mask[:, frame.shape[1]//4:] = 1
+                print('end mask')
+
             masks.append(mask)
+
         return masks

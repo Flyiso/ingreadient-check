@@ -24,21 +24,24 @@ class ManagePanorama:
         self.fail_counter = 0
         self.stitcher = cv2.Stitcher.create(1)
         self.stitcher.setWaveCorrection(cv2.WARP_POLAR_LINEAR)
-        self.stitcher.setCompositingResol(0.3)
+        self.stitcher.setCompositingResol(0)
         self.stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
-        self.stitcher.setPanoConfidenceThresh(0.6)
-        self.stitcher.setRegistrationResol(0.3)
-        self.stitcher.setSeamEstimationResol(0.3)
+        self.stitcher.setPanoConfidenceThresh(0.7)
+        self.stitcher.setRegistrationResol(0.9)
+        #self.stitcher.setWaveCorrection(True)
+        self.stitcher.setSeamEstimationResol(4)  # fails/interval: 0
         self.frame_manager = frame_manager
 
-    def add_frame(self, frame) -> bool:
+    def add_frame(self, frame, last_frame: bool = False) -> bool:
         """
         Adds a new frame to the mergers frames.
         Tries self.interval frames before if unsuccessful.
         Returns True for successful merges, returns false else.
         """
         self.frames.append(frame)
-        if len(self.frames) % self.interval == 0 or self.base is False:
+        if len(self.frames) % self.interval == 0 or \
+            self.base is False or \
+                last_frame is True:
             return self.add_more_frames(frame)
         return False
 
@@ -59,19 +62,20 @@ class ManagePanorama:
             if frame is False:
                 continue
             self.to_stitch.append(frame)
-            print(f'{len(self.to_stitch)}/{self.merge_counter}+3')
-            if len(self.to_stitch) >= self.merge_counter+3:
+            print(f'{len(self.to_stitch)}/{self.merge_counter}+5')
+            if len(self.to_stitch) >= 3:
                 status, result = \
-                    self.stitcher.stitch(
-                        self.to_stitch[0:self.merge_counter:2] +
-                        self.to_stitch[self.merge_counter-1:])
+                    self.stitcher.stitch(self.to_stitch,
+                                         self.frame_manager.get_masks(
+                                             self.to_stitch))
                 if status == cv2.Stitcher_OK:
                     print('New Merge: Success')
                     print(len(self.to_stitch))
                     cv2.imwrite('progress_images/merged.png', result)
-                    self.to_stitch[self.merge_counter] = result
-                    self.to_stitch = self.to_stitch[:self.merge_counter+1]
-                    self.merge_counter += 1
+                    #self.to_stitch[self.merge_counter] = result
+                    #self.to_stitch = self.to_stitch[:self.merge_counter+1]
+                    #self.merge_counter += 1
+                    self.base = result
                     print(len(self.to_stitch))
                     return True
                 print('New Merge: Failed')
