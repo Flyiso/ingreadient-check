@@ -333,12 +333,7 @@ class ManageFrames:
         masks = []
         for frame_index, frame in enumerate(frames):
             mask = np.zeros_like(frame)
-            if frame_index != 0:
-                mask[:, frame.shape[1]//3: (frame.shape[1]//3)*2] = 1
-                print('middle mask')
-            else:
-                mask[:, frame.shape[1]//4:] = 1
-                print('end mask')
+            mask[:, (frame.shape[1]//5)*2: (frame.shape[1]//5)*3] = 1
 
             masks.append(mask)
 

@@ -76,6 +76,11 @@ class RecordLabel:
         self.frame_n = len(self.panorama_manager.frames)
         return frame
 
+    def is_blurry(self, frame: np.ndarray, threshold: float = 100.0):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        return laplacian_var < threshold
+
     def end_video(self, last_frame: bool | np.ndarray):
         """
         final cleanup.
