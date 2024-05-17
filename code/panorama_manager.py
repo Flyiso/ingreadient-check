@@ -26,10 +26,10 @@ class ManagePanorama:
         self.stitcher.setWaveCorrection(cv2.WARP_POLAR_LINEAR)
         self.stitcher.setCompositingResol(-1)
         self.stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
-        self.stitcher.setPanoConfidenceThresh(0.8)
+        self.stitcher.setPanoConfidenceThresh(0.5)
         self.stitcher.setRegistrationResol(-1)
-        #self.stitcher.setSeamEstimationResol(4)  # fails/interval: 0
-        self.stitcher.setSeamEstimationResol(0.01)
+        self.stitcher.setSeamEstimationResol(4)  # fails/interval: 0
+        #self.stitcher.setSeamEstimationResol(0.01)
         self.frame_manager = frame_manager
 
     def add_frame(self, frame, last_frame: bool = False) -> bool:
@@ -62,7 +62,6 @@ class ManagePanorama:
             if frame is False:
                 continue
             self.to_stitch.append(frame)
-            print(f'{len(self.to_stitch)}/{self.merge_counter}+5')
             if len(self.to_stitch) >= 3:
                 status, result = \
                     self.stitcher.stitch(self.to_stitch,
@@ -70,10 +69,8 @@ class ManagePanorama:
                                              self.to_stitch))
                 if status == cv2.Stitcher_OK:
                     print('New Merge: Success')
-                    print(len(self.to_stitch))
                     cv2.imwrite('progress_images/merged.png', result)
                     self.base = result
-                    print(len(self.to_stitch))
                     return True
                 print('New Merge: Failed')
             return False

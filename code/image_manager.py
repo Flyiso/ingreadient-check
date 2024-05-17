@@ -82,6 +82,9 @@ class ManageFrames:
         """
         Uses mask to detect ROI and return ROI with perspective corrected.
         """
+        tilt = self.compute_tilt_angle(frame)
+        frame = self.rotate_image(frame, -tilt)
+        mask = self.rotate_image(mask, -tilt)
         _, mask_binary = cv2.threshold(mask, mask.mean(), mask.max(),
                                        cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(mask_binary, cv2.RETR_LIST,
@@ -105,11 +108,13 @@ class ManageFrames:
             return False
         cont_max = max(contours, key=cv2.contourArea)
 
-        points_1 = cont_max
-        points_2 = self.get_correction_matrix(cont_max)
+        #points_1 = cont_max
+        #points_2 = self.get_correction_matrix(cont_max)
+        points_1 = self.get_approx_corners(cont_max, False)
+        points_2 = self.get_correction_matrix(points_1)
 
         if all(isinstance(p, np.ndarray) for p in [points_1, points_2]):
-            homography, _ = cv2.findHomography(points_2, points_1,
+            homography, _ = cv2.findHomography(points_1, points_2,
                                                method=cv2.RANSAC)
             homography = homography.astype(np.float64)
             frame = cv2.warpPerspective(frame, homography,
@@ -117,17 +122,17 @@ class ManageFrames:
                                         borderMode=cv2.BORDER_CONSTANT,
                                         borderValue=(0, 0, 0),
                                         dsize=(w, h))
-            print(frame.shape)
-            for a, b in zip(points_1, points_2):
+            for idx, (a, b) in enumerate(zip(points_1, points_2)):
                 a = tuple(a[0])
                 b = tuple(b)
-                cv2.circle(f2, a, 2, (255, 0, 0), 2)
-                cv2.circle(f2, b, 2, (0, 255, 0), 2)
+                cv2.circle(f2, a, 2, (255, 0, idx*2), 2)
+                cv2.circle(f2, b, 2, (0, 255, idx*2), 2)
             cv2.imwrite('progress_images/frame_warped.png', frame)
             cv2.imwrite('progress_images/frame_corrections.png', f2)
         return frame
 
-    def get_approx_corners(self, contour: np.ndarray) -> np.ndarray:
+    def get_approx_corners(self, contour: np.ndarray,
+                           n_points: int | bool = 4) -> np.ndarray:
         """
         Approximates the corners of a given contour,
         using the Douglas-Peucker algorithm.
@@ -149,7 +154,9 @@ class ManageFrames:
         for eps_val in eps_vals:
             epsilon = eps_val * cv2.arcLength(contour, True)
             approx = cv2.approxPolyDP(contour, epsilon, True)
-            if len(approx) == 4:
+            if n_points is False and len(approx) <= 4:
+                return approx
+            elif len(approx) == n_points:
                 return approx
 
     def get_corr_max_min(self, contour: np.ndarray) -> np.ndarray:
@@ -162,7 +169,7 @@ class ManageFrames:
         min_y = min(contour, key=lambda x: x[0][1])
         return max_x, max_y, min_x, min_y
 
-    def sort_correction_corners(self, corners, contour) -> list:
+    def sort_correction_corners(self, corners) -> list:
         """
         Make sure corners are in the same order before perspective transform.
         Returns  corners of square, clockwise, with top left corner first.
@@ -324,6 +331,30 @@ class ManageFrames:
                                                      cv2.COLOR_BGR2GRAY),
                                         axis=(0, 1)).astype(int)*1.35)
         print(self.gs_threshold1, self.gs_threshold2)
+
+    def compute_tilt_angle(self, frame: np.ndarray):
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+        lines = cv2.HoughLines(edges, 1, np.pi / 180, 200)
+        if lines is None:
+            return 0
+        angles = []
+        for _, theta in lines[:, 0]:
+            angle = np.degrees(theta)
+            if angle > 90:
+                angle -= 180
+            angles.append(angle)
+        if not angles:
+            return 0
+        median_angle = np.median(angles)
+        return median_angle
+
+    def rotate_image(self, frame: np.ndarray, angle: float):
+        (h, w) = frame.shape[:2]
+        center = (w / 2, h / 2)
+        M = cv2.getRotationMatrix2D(center, angle, 1.0)
+        rotated = cv2.warpAffine(frame, M, (w, h))
+        return rotated
 
     @staticmethod
     def get_masks(frames: list, merge_counter: int = 0) -> list:

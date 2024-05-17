@@ -108,3 +108,4 @@ class RecordLabel:
     def save_image(self, filename: str, frame: np.ndarray):
         cv2.imwrite(
             f'{self.img_dir}{filename}.png', frame)
+
