@@ -30,7 +30,7 @@ class ManageFrames:
         self.dino_model = Model(
             f'{dino_dir}config/GroundingDINO_SwinT_OGC.py',
             f'{dino_dir}weights/groundingdino_swint_ogc.pth')
-        self.classes = ['all rows of text']
+        self.classes = ['text or image']
         self.box_threshold = 0.35
         self.text_threshold = 0.25
         self.sam_model = sam_model_registry[sam_encoder_version](
