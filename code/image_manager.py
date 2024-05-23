@@ -23,6 +23,7 @@ class ManageFrames:
         and model for label detection.
         """
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        print(f'device: {device}')
         sam_encoder_version = 'vit_h'
         sam_checkpoint_path = 'weights/sam_vit_h_4b8939.pth'
         dino_dir = '.venv/lib/python3.11/site-packages/groundingdino/'
@@ -82,9 +83,16 @@ class ManageFrames:
         """
         Uses mask to detect ROI and return ROI with perspective corrected.
         """
-        tilt = self.compute_tilt_angle(frame)
-        frame = self.rotate_image(frame, -tilt)
-        mask = self.rotate_image(mask, -tilt)
+        # tilt = self.compute_tilt_angle(frame)
+        tilt = self.compute_tilt_angle(
+                    frame[:, (frame.shape[1]//6): (frame.shape[1]//6)*5])
+        if tilt != 0:
+            print(f'{tilt} tilt correction')
+            frame = self.rotate_image(frame, tilt)
+            mask = self.rotate_image(mask, tilt)
+            cv2.imwrite('progress_images/frame_rotated.png', frame)
+        else:
+            print(f'no tilt correction {tilt}')
         _, mask_binary = cv2.threshold(mask, mask.mean(), mask.max(),
                                        cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(mask_binary, cv2.RETR_LIST,
@@ -108,17 +116,17 @@ class ManageFrames:
             return False
         cont_max = max(contours, key=cv2.contourArea)
 
-        #points_1 = cont_max
-        #points_2 = self.get_correction_matrix(cont_max)
         points_1 = self.get_approx_corners(cont_max, False)
         points_2 = self.get_correction_matrix(points_1)
+        if points_2 is False:
+            return False
 
         if all(isinstance(p, np.ndarray) for p in [points_1, points_2]):
             homography, _ = cv2.findHomography(points_1, points_2,
-                                               method=cv2.RANSAC)
+                                               method=cv2.RHO)
             homography = homography.astype(np.float64)
             frame = cv2.warpPerspective(frame, homography,
-                                        flags=cv2.INTER_CUBIC,
+                                        flags=cv2.INTER_LANCZOS4,
                                         borderMode=cv2.BORDER_CONSTANT,
                                         borderValue=(0, 0, 0),
                                         dsize=(w, h))
@@ -182,7 +190,8 @@ class ManageFrames:
 
         return np.array([top_left, top_right, bottom_right, bottom_left])
 
-    def get_correction_matrix(self, contour: np.ndarray) -> np.ndarray:
+    def get_correction_matrix(self,
+                              contour: np.ndarray) -> np.ndarray | bool:
         """
         Get an np.ndarray of len(contour) to describe the correction matrix.
         Matches each contour point to closest line in min_area rect.
@@ -209,6 +218,9 @@ class ManageFrames:
         correction_points = []
         for point in contour:
             point = list(point[0])
+            if point is None or corners is None:
+                print(corners)
+                return False
             if point in corners:
                 _, coord = min(
                     {'up_left':
@@ -350,6 +362,7 @@ class ManageFrames:
         return median_angle
 
     def rotate_image(self, frame: np.ndarray, angle: float):
+        print(f'correction: {angle}')
         (h, w) = frame.shape[:2]
         center = (w / 2, h / 2)
         M = cv2.getRotationMatrix2D(center, angle, 1.0)
@@ -364,7 +377,7 @@ class ManageFrames:
         masks = []
         for frame_index, frame in enumerate(frames):
             mask = np.zeros_like(frame)
-            mask[:, (frame.shape[1]//5)*2: (frame.shape[1]//5)*3] = 1
+            mask[:, (frame.shape[1]//7)*3: (frame.shape[1]//7)*4] = 1
 
             masks.append(mask)
 

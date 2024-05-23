@@ -24,12 +24,11 @@ class ManagePanorama:
         self.fail_counter = 0
         self.stitcher = cv2.Stitcher.create(1)
         self.stitcher.setWaveCorrection(cv2.WARP_POLAR_LINEAR)
-        self.stitcher.setCompositingResol(1)
+        self.stitcher.setCompositingResol(-1)
         self.stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
-        self.stitcher.setPanoConfidenceThresh(0.7)
+        self.stitcher.setPanoConfidenceThresh(1)
         self.stitcher.setRegistrationResol(-1)
         self.stitcher.setSeamEstimationResol(4)  # fails/interval: 0
-        #self.stitcher.setSeamEstimationResol(0.01)
         self.frame_manager = frame_manager
 
     def add_frame(self, frame, last_frame: bool = False) -> bool:

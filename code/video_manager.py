@@ -54,11 +54,12 @@ class RecordLabel:
             if self.frame_n == 0:
                 self.set_video_values(frame)
 
-            frame = self.process_image(frame)
+            frame, is_blurry = self.process_image(frame)
             self.frame_n += 1
 
             cv2.imshow('frame', frame)
-            last_frame = frame
+            if not is_blurry:
+                last_frame = frame
             if cv2.waitKey(25) & 0xFF == 27:
                 break
 
@@ -70,14 +71,26 @@ class RecordLabel:
         """
         Apply correction, enhancement
         and detection methods on frame
+        sorts out frames that are blurry and does not send them to the
+        panorama manager
         """
         frame = cv2.resize(frame, (self.width, self.height))
-        self.panorama_manager.add_frame(frame)
-        self.frame_n = len(self.panorama_manager.frames)
-        return frame
+        if not self.is_blurry(frame):
+            self.panorama_manager.add_frame(frame)
+            self.frame_n = len(self.panorama_manager.frames)
+        else:
+            print('blurry frame removed')
+            self.save_image('blurry_frame', frame)
+        return frame, self.is_blurry(frame)
 
-    def is_blurry(self, frame: np.ndarray, threshold: float = 100.0):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    def is_blurry(self, frame: np.ndarray,
+                  threshold: float = 250.00) -> bool:
+        """
+        Uses cv2 Laplacian to sort out images where
+        not enough edges are detected.
+        Returns True if image blur meet threshold.
+        """
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
         return laplacian_var < threshold
 
@@ -108,4 +121,3 @@ class RecordLabel:
     def save_image(self, filename: str, frame: np.ndarray):
         cv2.imwrite(
             f'{self.img_dir}{filename}.png', frame)
-
