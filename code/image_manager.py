@@ -370,15 +370,24 @@ class ManageFrames:
         return rotated
 
     @staticmethod
-    def get_masks(frames: list, merge_counter: int = 0) -> list:
+    def get_masks(frames: list) -> list:
         """
         Return masks for input frames.
         """
         masks = []
         for frame_index, frame in enumerate(frames):
             mask = np.zeros_like(frame)
-            mask[:, (frame.shape[1]//7)*3: (frame.shape[1]//7)*4] = 1
+            mask[:, (frame.shape[1]//5)*2: (frame.shape[1]//5)*3] = 1
 
             masks.append(mask)
 
         return masks
+
+    @staticmethod
+    def cut_images(frames: list) -> list:
+        cut_frames = []
+        for frame in frames:
+             frame[:, (frame.shape[1]//3): (frame.shape[1]//3)*2]
+             cut_frames.append(frame)
+        return cut_frames        
+

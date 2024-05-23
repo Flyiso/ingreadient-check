@@ -55,11 +55,12 @@ class RecordLabel:
                 self.set_video_values(frame)
 
             frame, is_blurry = self.process_image(frame)
-            self.frame_n += 1
+            
 
             cv2.imshow('frame', frame)
             if not is_blurry:
                 last_frame = frame
+                self.frame_n += 1
             if cv2.waitKey(25) & 0xFF == 27:
                 break
 
