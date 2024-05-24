@@ -55,7 +55,6 @@ class RecordLabel:
                 self.set_video_values(frame)
 
             frame, is_blurry = self.process_image(frame)
-            
 
             cv2.imshow('frame', frame)
             if not is_blurry:

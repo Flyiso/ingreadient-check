@@ -377,7 +377,7 @@ class ManageFrames:
         masks = []
         for frame_index, frame in enumerate(frames):
             mask = np.zeros_like(frame)
-            mask[:, (frame.shape[1]//5)*2: (frame.shape[1]//5)*3] = 1
+            mask[:, (frame.shape[1]//7)*3: (frame.shape[1]//7)*4] = 1
 
             masks.append(mask)
 
@@ -387,7 +387,6 @@ class ManageFrames:
     def cut_images(frames: list) -> list:
         cut_frames = []
         for frame in frames:
-             frame[:, (frame.shape[1]//3): (frame.shape[1]//3)*2]
-             cut_frames.append(frame)
-        return cut_frames        
-
+            frame[:, ((frame.shape[1]//5)*2)-10: ((frame.shape[1]//5)*3)+10]
+            cut_frames.append(frame)
+        return cut_frames
