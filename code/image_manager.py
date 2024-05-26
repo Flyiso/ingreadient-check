@@ -32,7 +32,7 @@ class ManageFrames:
             f'{dino_dir}config/GroundingDINO_SwinT_OGC.py',
             f'{dino_dir}weights/groundingdino_swint_ogc.pth')
         self.classes = ['text or image']
-        self.box_threshold = 0.35
+        self.box_threshold = 0.40  # 0.35
         self.text_threshold = 0.25
         self.sam_model = sam_model_registry[sam_encoder_version](
             checkpoint=sam_checkpoint_path).to(device=device)
@@ -87,12 +87,9 @@ class ManageFrames:
         tilt = self.compute_tilt_angle(
                     frame[:, (frame.shape[1]//6): (frame.shape[1]//6)*5])
         if tilt != 0:
-            print(f'{tilt} tilt correction')
             frame = self.rotate_image(frame, tilt)
             mask = self.rotate_image(mask, tilt)
             cv2.imwrite('progress_images/frame_rotated.png', frame)
-        else:
-            print(f'no tilt correction {tilt}')
         _, mask_binary = cv2.threshold(mask, mask.mean(), mask.max(),
                                        cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(mask_binary, cv2.RETR_LIST,
@@ -219,7 +216,6 @@ class ManageFrames:
         for point in contour:
             point = list(point[0])
             if point is None or corners is None:
-                print(corners)
                 return False
             if point in corners:
                 _, coord = min(
@@ -275,15 +271,15 @@ class ManageFrames:
         frame_data = self.find_text(frame)
         self.set_threshold_values(frame, frame_data)
 
-    def find_text(self, frame,
-                  output_type: str = 'dict',
-                  lang: str = 'swe') -> dict:
+    def find_text(self, frame: np.ndarray,
+                  output_type: str = 'dict') -> dict:
         """
         Returns data dictionary of the text
         found in the frame.
         """
+        print(type(frame))
         data = pt.image_to_data(image=frame, config=self.pt_config,
-                                lang=lang, output_type=output_type)
+                                output_type=output_type)
         return data
 
     def enhance_frame(self,
@@ -342,7 +338,6 @@ class ManageFrames:
         self.gs_threshold2 = int(np.max(cv2.cvtColor(self.target_area,
                                                      cv2.COLOR_BGR2GRAY),
                                         axis=(0, 1)).astype(int)*1.35)
-        print(self.gs_threshold1, self.gs_threshold2)
 
     def compute_tilt_angle(self, frame: np.ndarray):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -362,7 +357,6 @@ class ManageFrames:
         return median_angle
 
     def rotate_image(self, frame: np.ndarray, angle: float):
-        print(f'correction: {angle}')
         (h, w) = frame.shape[:2]
         center = (w / 2, h / 2)
         M = cv2.getRotationMatrix2D(center, angle, 1.0)
@@ -370,23 +364,48 @@ class ManageFrames:
         return rotated
 
     @staticmethod
-    def get_masks(frames: list) -> list:
+    def get_masks(frames: list, amount: int = 7) -> list:
         """
         Return masks for input frames.
+        frames: list of np.ndarray frames to get masks for.
+        amount: 1/amount of center of frame to highlight with mask.
+                should be an odd integer(to properly select center)
         """
         masks = []
         for frame_index, frame in enumerate(frames):
             mask = np.zeros_like(frame)
-            mask[:, (frame.shape[1]//7)*3: (frame.shape[1]//7)*4] = 1
+            mask[:, (frame.shape[1]//amount)*amount//2:
+                 (frame.shape[1]//amount)*(amount//2)+1] = 1
 
             masks.append(mask)
 
         return masks
 
     @staticmethod
+    def get_text_masks(frames: list) -> list:
+        """
+        Creates a mask that highlights where letters are found.
+        """
+        masks = []
+        for frame in frames:
+            results = pt.image_to_data(frame, output_type=pt.Output.DICT)
+            mask = np.zeros_like(frame)
+            for i in range(len(results["text"])):
+                x = results["left"][i]
+                y = results["top"][i]
+                w = results["width"][i]
+                h = results["height"][i]
+                if results["text"][i].strip():
+                    cv2.rectangle(mask, (x, y),
+                                  (x + w, y + h),
+                                  (255, 255, 255), -1)
+            masks.append(mask)
+        return masks
+
+    @staticmethod
     def cut_images(frames: list) -> list:
         cut_frames = []
         for frame in frames:
-            frame[:, ((frame.shape[1]//5)*2)-10: ((frame.shape[1]//5)*3)+10]
+            frame[:, ((frame.shape[1]//3)): ((frame.shape[1]//3)*2)]
             cut_frames.append(frame)
         return cut_frames

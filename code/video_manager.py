@@ -76,7 +76,14 @@ class RecordLabel:
         """
         frame = cv2.resize(frame, (self.width, self.height))
         if not self.is_blurry(frame):
-            self.panorama_manager.add_frame(frame)
+            merge_1, merge_2, merge_attempted = \
+                self.panorama_manager.add_frame(frame)
+            if merge_attempted:
+                message_1 = lambda x: 'Success' if x else 'Fail'  # noqa: E731
+                message_a = len(self.panorama_manager.to_stitch)
+                message_b = len(self.panorama_manager.stitched)
+                print(f'\nmerge 1: {message_1(merge_1)}({message_a}/5)')
+                print(f'merge 2: {message_1(merge_2)}({message_b}/2)\n')
             self.frame_n = len(self.panorama_manager.frames)
         else:
             print('blurry frame removed')
@@ -98,9 +105,17 @@ class RecordLabel:
         """
         final cleanup.
         """
-        if last_frame is not False:
-            self.panorama_manager.add_more_frames(last_frame)
-        print('DONE!')
+        if isinstance(last_frame, np.ndarray):
+            print('Final merge done, read image...')
+            #merge_1, merge_2, merge_attempted = \
+            #    self.panorama_manager.add_frame(last_frame, True)
+            #if merge_attempted:
+            #    message_1 = lambda x: 'Success' if x else 'Fail'  # noqa: E731
+            #    message_a = len(self.panorama_manager.to_stitch)
+            #    message_b = len(self.panorama_manager.stitched)
+            #    print(f'\nFinal 1: {message_1(merge_1)}({message_a}/5)')
+            #    print(f'Final 2: {message_1(merge_2)}({message_b}/2)\n')
+
         print(f'merged: {self.panorama_manager.merge_counter}\
               failed: {self.panorama_manager.fail_counter}')
         print(f'total frames: {len(self.panorama_manager.frames)}\

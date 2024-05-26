@@ -35,4 +35,4 @@ def run_app(filepath, img_dir: str = None,
                 img_dir=img_dir)
 
 
-run_app('videos/test_video_2.mp4', 'vid_2', frame_interval=10)
+run_app('videos/test_video_2.mp4', 'vid_2', frame_interval=13)
