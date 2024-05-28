@@ -21,18 +21,18 @@ class ManagePanorama:
         self.frames = []
         self.to_stitch = []
         self.stitched = []
+        self.selected = []
         self.base = False
         self.panorama_merged = False
         self.merge_counter = 1
         self.fail_counter = 0
         self.stitcher = cv2.Stitcher.create(1)
         self.stitcher.setWaveCorrection(cv2.WARP_POLAR_LINEAR)
-        self.stitcher.setCompositingResol(-1.5)
+        self.stitcher.setCompositingResol(-2)
         self.stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
-        self.pano_confidence_max = 1.7
-        self.pano_confidence_min = 0.8
-        self.stitcher.setRegistrationResol(-1)
-        self.stitcher.setSeamEstimationResol(-4)  # fails/interval: 0
+        self.stitcher.setPanoConfidenceThresh(1)
+        self.stitcher.setRegistrationResol(-1.5)
+        self.stitcher.setSeamEstimationResol(-5)  # fails/interval: 0
         self.frame_manager = frame_manager
 
     def add_frame(self, frame, last_frame: bool = False) -> bool:
@@ -52,14 +52,26 @@ class ManagePanorama:
                                 do a merge is not reached.
         """
         self.frames.append(frame)
+        if last_frame:
+            bool_b = self.stitch_stitched_frames(last_frame)
+            return False, bool_b, True
+        if isinstance(self.base, np.ndarray):
+            print(f'frames: {len(self.frames)}')
+            return False, False, False
+
         if all([bool(len(self.frames) % self.interval != 0),
                 isinstance(self.base, np.ndarray),
                 last_frame is False]):
             print(f'frames: {len(self.frames)}')
             return False, False, False
-        bool_a = self.add_more_frames(frame, last_frame)
+
+        bool_a = False
+        if len(self.frames) % self.interval == 0:
+            bool_a = self.add_more_frames(frame, last_frame)
+
         bool_b = self.stitch_stitched_frames(last_frame) if any(
-            [bool_a, last_frame]) else False
+            [last_frame, bool_a]) else False
+
         cv2.imwrite('progress_images/base.png', self.base)
         return bool_a, bool_b, True
 
@@ -69,6 +81,8 @@ class ManagePanorama:
         Modified version of frame stitching to test if
         more frames solve stitcher error 1 problems
         """
+        if not isinstance(frame, np.ndarray):
+            return False
         if self.base is False:
             base = self.frame_manager.find_label(frame)
             if isinstance(base, bool):
@@ -82,22 +96,27 @@ class ManagePanorama:
         n_frames = len(self.frames)
         for frame_id, frame in enumerate(self.frames[::-1], 1):
             frame = self.frame_manager.find_label(frame)
+
             if frame is False:
                 # remove bad frames and try next one.
                 self.frames.pop(n_frames-frame_id)
                 continue
+
             self.to_stitch.append(frame)
+            self.selected.append(frame)
             if \
-                len(self.to_stitch) >= 5 or\
+                len(self.to_stitch) >= 3 or\
                     all([last_frame, len(self.to_stitch) >= 2]):
-                self.stitcher.setPanoConfidenceThresh(
-                    self.pano_confidence_max -
-                    float(f'{(len(self.to_stitch)-5)/10}'))
-                status, result = \
-                    self.stitcher.stitch(self.frame_manager.cut_images(
-                        self.to_stitch),
-                                         self.frame_manager.get_masks(
-                                             self.to_stitch))
+
+                #status, result = \
+                    #self.stitcher.stitch(self.to_stitch, list(
+                #        map(lambda m1, m2: cv2.bitwise_and(m1, m2),
+                #            self.frame_manager.get_masks(self.to_stitch),
+                #            self.frame_manager.get_text_masks(self.to_stitch,
+                #                                              20)
+                #            )))
+                result = ''
+
                 if status == cv2.Stitcher_OK:
                     cv2.imwrite('progress_images/merged.png', result)
                     if not self.panorama_merged:
@@ -114,23 +133,58 @@ class ManagePanorama:
         """
         Attempts to stitch together already stitched frames.
         """
+        print(f'is current last?: {last_frame}')
+        if last_frame:
+            print('LAST FRAMES, SAVE IMAGES...')
+            self.stitched = self.frame_manager.get_most_different(
+                self.frames, 17)
+            for frame in self.stitched:
+                print(frame.shape)
+            for f_id, f_obj in enumerate(self.stitched):
+                print(f'{f_id+1}/{len(self.stitched)}')
+                cv2.imwrite(f'progress_images/p_{f_id}.png', f_obj)
 
-        if len(self.stitched) >= 2:
+            stitcher = cv2.Stitcher.create(1)
+            stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
+            stitcher.setWaveCorrection(cv2.WARP_POLAR_LINEAR)
+            stitcher.setCompositingResol(0.99)
+            stitcher.setSeamEstimationResol(0.99)
+            stitcher.setPanoConfidenceThresh(0.33)
+            status, result = stitcher.stitch(
+                self.stitched,
+                self.frame_manager.get_text_masks(self.stitched, 15))
+            """status, result = stitcher.stitch(
+                self.stitched,
+                list(map(lambda m1, m2: cv2.bitwise_and(m1, m2),
+                         self.frame_manager.get_masks(
+                                        self.stitched),
+                         self.frame_manager.get_text_masks(
+                                        self.stitched, 25)
+                         )))"""
+
+            if status == cv2.Stitcher_OK:
+                self.base = result
+                cv2.imwrite('progress_images/final.png', result)
+                return True
+            return False
+
+        if len(self.stitched) >= 3 or last_frame:
             stitcher = cv2.Stitcher.create(0)  # 0
-            stitcher.setPanoConfidenceThresh(0.58)
+            con_thresh = ((len(self.stitched)*1.25)/10)/2
             stitcher.setInterpolationFlags(cv2.INTER_LINEAR)
             stitcher.setWaveCorrection(cv2.WARP_POLAR_LINEAR)
-            status, result = stitcher.stitch(self.stitched,
-                                             self.frame_manager.get_text_masks(
-                                                 self.stitched))
+            stitcher.setSeamEstimationResol(-0.3)
+
+            stitcher.setPanoConfidenceThresh(con_thresh)
+            status, result = stitcher.stitch(
+                self.stitched,
+                self.frame_manager.get_text_masks(self.stitched, 66))
             if status == cv2.Stitcher_OK:
                 cv2.imwrite(
                     f'progress_images/m_pan({len(self.stitched)}).png',
                     result)
-                print('New base img')
                 self.base = result
                 self.panorama_merged = True
-                return True
 
         return False
 

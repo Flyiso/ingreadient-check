@@ -1,6 +1,9 @@
 """
 image manipulation, such as
 threshold, cropping, enhancement.
+This is currently a collection of methods used
+by the program in different steps and should later
+on be sorted into more categories.
 """
 from groundingdino.util.inference import Model
 from segment_anything import sam_model_registry, SamPredictor
@@ -376,36 +379,93 @@ class ManageFrames:
             mask = np.zeros_like(frame)
             mask[:, (frame.shape[1]//amount)*amount//2:
                  (frame.shape[1]//amount)*(amount//2)+1] = 1
-
             masks.append(mask)
-
         return masks
 
     @staticmethod
-    def get_text_masks(frames: list) -> list:
+    def get_text_masks(frames: list, percentile: int = 30) -> list:
         """
         Creates a mask that highlights where letters are found.
+
+        input values:
+            frames(list[np.ndarray]): Frames to get masks for. Required
+            percentile(int, 0-100): top x percent of results to
+                                    allow in mask. Optional, default 30%
+        output values:
+            masks(list[np.ndarray]): Masks created for each frame.
         """
         masks = []
         for frame in frames:
-            results = pt.image_to_data(frame, output_type=pt.Output.DICT)
             mask = np.zeros_like(frame)
+            results = pt.image_to_data(frame, config='--psm 12',
+                                       output_type=pt.Output.DICT)
+            thresh = np.percentile(list
+                                   (map(int, results['conf'])), 100-percentile)
+
             for i in range(len(results["text"])):
-                x = results["left"][i]
-                y = results["top"][i]
-                w = results["width"][i]
-                h = results["height"][i]
-                if results["text"][i].strip():
+                if results["text"][i].strip() and results['conf'][i] > thresh:
+                    x = results["left"][i]
+                    y = results["top"][i]
+                    w = results["width"][i]
+                    h = results["height"][i]
                     cv2.rectangle(mask, (x, y),
                                   (x + w, y + h),
                                   (255, 255, 255), -1)
+            mask[:, int((frame.shape[1]//5)*2): (frame.shape[1]//5)*3] = 0
+            mask[:, 0:int((frame.shape[1]//10))] = 0
+            mask[:, int(frame.shape[1]//10)*9:frame.shape[1]] = 0
             masks.append(mask)
+            cv2.imwrite('progress_images/m_mask.png', mask)
         return masks
 
     @staticmethod
     def cut_images(frames: list) -> list:
         cut_frames = []
         for frame in frames:
-            frame[:, ((frame.shape[1]//3)): ((frame.shape[1]//3)*2)]
-            cut_frames.append(frame)
+            cut_frames.append(
+                frame[:, ((frame.shape[1]//7)): ((frame.shape[1]//7)*6)])
         return cut_frames
+
+    @staticmethod
+    def get_std_dev_frames(frames: list) -> list:
+        m_width = int(np.median(np.array([frame.shape[1]
+                                          for frame in frames])))
+        m_height = int(np.median(np.array([frame.shape[0]
+                                           for frame in frames])))
+        std_width = np.std([frame.shape[1] for frame in frames])
+        std_height = np.std([frame.shape[0] for frame in frames])
+        frames = [frame for frame in frames if
+                  (m_width - std_width <= frame.shape[1] <=
+                   m_width + std_width) and
+                  (m_height - std_height <= frame.shape[0] <=
+                   m_height + std_height)]
+        return frames
+
+    def get_most_different(self, frames: list,
+                           num: int, patience: int = 5) -> list:
+        if num >= len(frames):
+            print('Number of frames less than/equal to requested return len')
+            return frames
+        interval = len(frames)//num
+        selected_frames = []
+        print(len(frames))
+
+        for frame_id, frame in enumerate(frames):
+            if frame_id % interval == 0:
+                frame = self.find_label(frame)
+                if isinstance(frame, np.ndarray):
+                    selected_frames.append([frame, frame_id])
+                    continue
+                for id_diff, (frame_a, frame_b) in enumerate(
+                    zip(
+                        frames[frame_id-patience:frame_id-1:-1],
+                        frames[frame_id:frame_id+patience])):
+                    frame = self.find_label(frame_a)
+                    if frame:
+                        selected_frames.append[frame, frame_id-id_diff]
+                        break
+                    frame = self.find_label(frame_b)
+                    if frame:
+                        selected_frames.append[frame, frame_id+id_diff]
+                        break
+        return self.get_std_dev_frames([frame[0] for frame in selected_frames])
