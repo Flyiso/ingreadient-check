@@ -80,13 +80,6 @@ class RecordLabel:
         if not self.is_blurry(frame):
             merge_1, merge_2, merge_attempted = \
                 self.panorama_manager.add_frame(frame)
-            if merge_attempted:
-                #  message_1 = lambda x: 'Success' if x else 'Fail'
-                #  message_a = len(self.panorama_manager.to_stitch)
-                #  message_b = len(self.panorama_manager.stitched)
-                print('collect frame ROIs...')
-                #  print(f'\nmerge 1: {message_1(merge_1)}({message_a}/5)')
-                #  print(f'merge 2: {message_1(merge_2)}({message_b}/2)\n')
             self.frame_n = len(self.panorama_manager.frames)
         else:
             print('blurry frame removed')

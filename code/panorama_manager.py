@@ -137,56 +137,55 @@ class ManagePanorama:
         if last_frame:
             print('LAST FRAMES, SAVE IMAGES...')
             self.stitched = self.frame_manager.get_most_different(
-                self.frames, 17)
-            for frame in self.stitched:
-                print(frame.shape)
+                self.frames, 16)
+
             for f_id, f_obj in enumerate(self.stitched):
                 print(f'{f_id+1}/{len(self.stitched)}')
                 cv2.imwrite(f'progress_images/p_{f_id}.png', f_obj)
 
-            stitcher = cv2.Stitcher.create(1)
-            stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
+            stitcher = cv2.Stitcher.create(0)
+            #stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
             stitcher.setWaveCorrection(cv2.WARP_POLAR_LINEAR)
-            stitcher.setCompositingResol(0.99)
-            stitcher.setSeamEstimationResol(0.99)
-            stitcher.setPanoConfidenceThresh(0.33)
-            status, result = stitcher.stitch(
-                self.stitched,
-                self.frame_manager.get_text_masks(self.stitched, 15))
-            """status, result = stitcher.stitch(
-                self.stitched,
+            #stitcher.setWaveCorrection(cv2.WARP_POLAR_LOG)
+            #stitcher.setRegistrationResol(0.1)
+            #stitcher.setCompositingResol(0.1)
+            #stitcher.setSeamEstimationResol(1)
+            #stitcher.setPanoConfidenceThresh(0.9)
+
+            status1, result1 = stitcher.stitch(
+                self.stitched[:int(len(self.stitched)*0.75):],
                 list(map(lambda m1, m2: cv2.bitwise_and(m1, m2),
                          self.frame_manager.get_masks(
-                                        self.stitched),
+                                        self.stitched[:int(
+                                            len(self.stitched)*0.75):]),
                          self.frame_manager.get_text_masks(
-                                        self.stitched, 25)
-                         )))"""
-
-            if status == cv2.Stitcher_OK:
-                self.base = result
-                cv2.imwrite('progress_images/final.png', result)
-                return True
+                                        self.stitched[:int(
+                                            len(self.stitched)*0.75):],
+                                        33))))
+            status2, result2 = stitcher.stitch(
+                self.stitched[(len(self.stitched)//4)::],
+                list(map(lambda m1, m2: cv2.bitwise_and(m1, m2),
+                         self.frame_manager.get_masks(
+                                        self.stitched[
+                                            (len(self.stitched)//4)::]),
+                         self.frame_manager.get_text_masks(
+                                        self.stitched[
+                                            (len(self.stitched)//4)::],
+                                        33))))
+            status = False
+            if status1 == cv2.Stitcher_OK and status2 == cv2.Stitcher_OK:
+                cv2.imwrite('progress_images/m_1.png', result1)
+                cv2.imwrite('progress_images/m_2.png', result2)
+                status, result = stitcher.stitch([result1,
+                                                  self.stitched[
+                                                      len(self.stitched)//2],
+                                                  result2])
+                if status == cv2.Stitcher_OK:
+                    self.base = result
+                    print('success!')
+                    cv2.imwrite('progress_images/final_base.png', result)
+                    return True
             return False
-
-        if len(self.stitched) >= 3 or last_frame:
-            stitcher = cv2.Stitcher.create(0)  # 0
-            con_thresh = ((len(self.stitched)*1.25)/10)/2
-            stitcher.setInterpolationFlags(cv2.INTER_LINEAR)
-            stitcher.setWaveCorrection(cv2.WARP_POLAR_LINEAR)
-            stitcher.setSeamEstimationResol(-0.3)
-
-            stitcher.setPanoConfidenceThresh(con_thresh)
-            status, result = stitcher.stitch(
-                self.stitched,
-                self.frame_manager.get_text_masks(self.stitched, 66))
-            if status == cv2.Stitcher_OK:
-                cv2.imwrite(
-                    f'progress_images/m_pan({len(self.stitched)}).png',
-                    result)
-                self.base = result
-                self.panorama_merged = True
-
-        return False
 
     def detect_text(self):
         data = self.frame_manager.find_text(self.base)

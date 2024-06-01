@@ -8,6 +8,7 @@ on be sorted into more categories.
 from groundingdino.util.inference import Model
 from segment_anything import sam_model_registry, SamPredictor
 from typing import List
+from pytesseract import Output
 import pytesseract as pt
 import supervision as sv
 import numpy as np
@@ -31,6 +32,7 @@ class ManageFrames:
         sam_checkpoint_path = 'weights/sam_vit_h_4b8939.pth'
         dino_dir = '.venv/lib/python3.11/site-packages/groundingdino/'
         self.pt_config = pt_config
+        self.focal_length = False
         self.dino_model = Model(
             f'{dino_dir}config/GroundingDINO_SwinT_OGC.py',
             f'{dino_dir}weights/groundingdino_swint_ogc.pth')
@@ -60,7 +62,8 @@ class ManageFrames:
                                                         detections=detections,
                                                         opacity=1),
                                 cv2.COLOR_BGR2GRAY)
-        img = self.distort_perspective(frame, roi_mask)
+        #img = self.distort_perspective(frame, roi_mask)
+        img = self.cylindrical_unwrap(frame, roi_mask)
         if isinstance(img, np.ndarray):
             img = self.enhance_frame(img)
             return img
@@ -428,9 +431,10 @@ class ManageFrames:
 
     @staticmethod
     def get_std_dev_frames(frames: list) -> list:
-        m_width = int(np.median(np.array([frame.shape[1]
+        return frames  # to check if keeping all help.
+        m_width = int(np.mean(np.array([frame.shape[1]
                                           for frame in frames])))
-        m_height = int(np.median(np.array([frame.shape[0]
+        m_height = int(np.mean(np.array([frame.shape[0]
                                            for frame in frames])))
         std_width = np.std([frame.shape[1] for frame in frames])
         std_height = np.std([frame.shape[0] for frame in frames])
@@ -469,3 +473,60 @@ class ManageFrames:
                         selected_frames.append[frame, frame_id+id_diff]
                         break
         return self.get_std_dev_frames([frame[0] for frame in selected_frames])
+
+    def cylindrical_unwrap(self, image, mask, f=140):
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
+                                       cv2.CHAIN_APPROX_SIMPLE)
+        if len(contours) < 1:
+            return False
+        contour = max(contours, key=cv2.contourArea)
+
+        rect = cv2.minAreaRect(contour)
+        center, (w, h), angle = rect
+        if w > h:
+            angle = angle-90
+        if angle < -180:
+            angle += 360
+        elif angle > 180:
+            angle += 360
+
+        rotated_image = cv2.warpAffine(image, cv2.getRotationMatrix2D
+                                       (center, angle, 1.0),
+                                       (image.shape[1], image.shape[0]))
+        rotated_mask = cv2.warpAffine(mask, cv2.getRotationMatrix2D
+                                      (center, angle, 1.0),
+                                      (mask.shape[1], mask.shape[0]))
+
+        contours, _ = cv2.findContours(rotated_mask, cv2.RETR_EXTERNAL,
+                                       cv2.CHAIN_APPROX_SIMPLE)
+        if len(contours) < 1:
+            return False
+        contour = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(contour)
+        roi_cropped = rotated_image[y:y+h, x:x+w]
+
+        map_x = np.zeros((h, w), dtype=np.float32)
+        map_y = np.zeros((h, w), dtype=np.float32)
+
+        cx, cy = w // 2, h // 2
+
+        if self.focal_length:
+            f = self.focal_length
+
+        for i in range(h):
+            for j in range(w):
+                theta = (j - cx) / f
+                h_ = (i - cy) / f
+                x_ = f * np.sin(theta)
+                y_ = f * h_
+                z_ = f * np.cos(theta)
+
+                map_x[i, j] = x_ + cx
+                map_y[i, j] = y_ + cy
+
+        try:
+            return cv2.remap(roi_cropped, map_x, map_y,
+                             cv2.INTER_LINEAR)
+        except cv2.error:
+            return False
+
