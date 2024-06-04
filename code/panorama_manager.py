@@ -3,6 +3,7 @@ uses images to try to create a panorama of all.
 """
 import cv2
 import numpy as np
+from stitching import Stitcher
 
 
 class ManagePanorama:
@@ -24,15 +25,16 @@ class ManagePanorama:
         self.selected = []
         self.base = False
         self.panorama_merged = False
-        self.merge_counter = 1
+        self.merge_counter = 0
         self.fail_counter = 0
-        self.stitcher = cv2.Stitcher.create(1)
-        self.stitcher.setWaveCorrection(cv2.WARP_POLAR_LINEAR)
-        self.stitcher.setCompositingResol(-2)
-        self.stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
-        self.stitcher.setPanoConfidenceThresh(1)
-        self.stitcher.setRegistrationResol(-1.5)
-        self.stitcher.setSeamEstimationResol(-5)  # fails/interval: 0
+        #self.stitcher = Stitcher(detector='sift', warper_type='cylindrical')
+        # self.stitcher = cv2.Stitcher.create(1)
+        # self.stitcher.setWaveCorrection(cv2.WARP_POLAR_LINEAR)
+        # self.stitcher.setCompositingResol(-2)
+        # self.stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
+        # self.stitcher.setPanoConfidenceThresh(1)
+        # self.stitcher.setRegistrationResol(-1.5)
+        # self.stitcher.setSeamEstimationResol(-5)  # fails/interval: 0
         self.frame_manager = frame_manager
 
     def add_frame(self, frame, last_frame: bool = False) -> bool:
@@ -133,59 +135,38 @@ class ManagePanorama:
         """
         Attempts to stitch together already stitched frames.
         """
+        wrapper_settings = ["spherical", "plane", "affine", "cylindrical",
+                            "fisheye", "stereographic",
+                            "compressedPlaneA2B1",
+                            "compressedPlaneA1.5B1",
+                            "compressedPlanePortraitA2B1",
+                            "compressedPlanePortraitA1.5B1",
+                            "paniniA2B1", "paniniA1.5B1",
+                            "paniniPortraitA2B1", "paniniPortraitA1.5B1",
+                            "mercator", "transverseMercator"]
+        waveCor_settings = ["horiz", "vert", "auto", "no"]
+        detectr_settings = ['orb', 'sift', 'brisk', 'akaze']
+        matcher_settings = ['affine', 'homography']  # also estimator choices
+        blender_settings = ['multiband', 'feather', 'no']
+        adjustr_settings = ['ray', 'reproj', 'affine', 'no']  # did not work(floating point error?)
+        s_findr_settings = ['dp_color', 'dp_colorgrad',
+                            'gc_color', 'gc_colorgrad',
+                            'voronoi', 'no']
         print(f'is current last?: {last_frame}')
         if last_frame:
             print('LAST FRAMES, SAVE IMAGES...')
             self.stitched = self.frame_manager.get_most_different(
-                self.frames, 16)
+                self.frames, 15)
 
-            for f_id, f_obj in enumerate(self.stitched):
-                print(f'{f_id+1}/{len(self.stitched)}')
-                cv2.imwrite(f'progress_images/p_{f_id}.png', f_obj)
-
-            stitcher = cv2.Stitcher.create(0)
-            #stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
-            stitcher.setWaveCorrection(cv2.WARP_POLAR_LINEAR)
-            #stitcher.setWaveCorrection(cv2.WARP_POLAR_LOG)
-            #stitcher.setRegistrationResol(0.1)
-            #stitcher.setCompositingResol(0.1)
-            #stitcher.setSeamEstimationResol(1)
-            #stitcher.setPanoConfidenceThresh(0.9)
-
-            status1, result1 = stitcher.stitch(
-                self.stitched[:int(len(self.stitched)*0.75):],
-                list(map(lambda m1, m2: cv2.bitwise_and(m1, m2),
-                         self.frame_manager.get_masks(
-                                        self.stitched[:int(
-                                            len(self.stitched)*0.75):]),
-                         self.frame_manager.get_text_masks(
-                                        self.stitched[:int(
-                                            len(self.stitched)*0.75):],
-                                        33))))
-            status2, result2 = stitcher.stitch(
-                self.stitched[(len(self.stitched)//4)::],
-                list(map(lambda m1, m2: cv2.bitwise_and(m1, m2),
-                         self.frame_manager.get_masks(
-                                        self.stitched[
-                                            (len(self.stitched)//4)::]),
-                         self.frame_manager.get_text_masks(
-                                        self.stitched[
-                                            (len(self.stitched)//4)::],
-                                        33))))
-            status = False
-            if status1 == cv2.Stitcher_OK and status2 == cv2.Stitcher_OK:
-                cv2.imwrite('progress_images/m_1.png', result1)
-                cv2.imwrite('progress_images/m_2.png', result2)
-                status, result = stitcher.stitch([result1,
-                                                  self.stitched[
-                                                      len(self.stitched)//2],
-                                                  result2])
-                if status == cv2.Stitcher_OK:
-                    self.base = result
-                    print('success!')
-                    cv2.imwrite('progress_images/final_base.png', result)
-                    return True
-            return False
+            stitcher = Stitcher()
+            try:
+                panorama = stitcher.stitch(self.stitched)
+                cv2.imwrite('progress_images/panorama.png',
+                            panorama)
+                self.base = panorama
+                return True
+            except:
+                return False
 
     def detect_text(self):
         data = self.frame_manager.find_text(self.base)

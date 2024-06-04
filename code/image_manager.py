@@ -474,7 +474,7 @@ class ManageFrames:
                         break
         return self.get_std_dev_frames([frame[0] for frame in selected_frames])
 
-    def cylindrical_unwrap(self, image, mask, f=140):
+    def cylindrical_unwrap(self, image, mask, f=200):
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
                                        cv2.CHAIN_APPROX_SIMPLE)
         if len(contours) < 1:
@@ -529,4 +529,3 @@ class ManageFrames:
                              cv2.INTER_LINEAR)
         except cv2.error:
             return False
-
