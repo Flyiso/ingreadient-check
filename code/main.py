@@ -32,7 +32,6 @@ def run_app(filepath, img_dir: str = None,
     if img_dir is not None:
         check_directory(img_dir, frame_interval)
     RecordLabel(video_path=filepath,
-                interval=frame_interval,
                 adjust_h=0.45, adjust_w=0.45,
                 pt_config='oem-- 3 --psm 6',
                 img_dir=img_dir)
