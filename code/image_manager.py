@@ -1,9 +1,7 @@
 """
-image manipulation, such as
-threshold, cropping, enhancement.
-This is currently a collection of methods used
-by the program in different steps and should later
-on be sorted into more categories.
+File that collect all image enhancement, manipulation, et cetera.
+contains methods for segmentation of ROI, corrections of perspective,
+correction of lightning conditions and more
 """
 from groundingdino.util.inference import Model
 from segment_anything import sam_model_registry, SamPredictor
@@ -179,6 +177,10 @@ class ManageFrames:
 
     def get_most_different(self, frames: list,
                            num: int, patience: int = 5) -> list:
+        """
+        Method for processing of multiple frames. Returns list of enhanced
+        and preprocessed frames, of length n
+        """
         if num >= len(frames):
             print('Number of frames less than/equal to requested return len')
             return frames
@@ -257,3 +259,14 @@ class ManageFrames:
                              cv2.INTER_LINEAR)
         except cv2.error:
             return False
+
+    def is_blurry(self, frame: np.ndarray,
+                  threshold: float = 300) -> bool:
+        """
+        Uses cv2 Laplacian to sort out images where
+        not enough edges are detected.
+        Returns True if image blur meet threshold.
+        """
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        return laplacian_var < threshold

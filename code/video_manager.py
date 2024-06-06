@@ -12,7 +12,8 @@ class RecordLabel:
                  adjust_h: float = 1,
                  adjust_w: float = 1,
                  pt_config: str = '--oem 3 --psm 6',
-                 img_dir: str = 'default') -> None:
+                 img_dir: str = 'default',
+                 display_current: bool = False) -> None:
         """
         Initialise video capture. Manage video feed and
         frame management.
@@ -24,14 +25,17 @@ class RecordLabel:
         adjust_w(float): size adjustment for frame width.
         config(str): configuration str for pytesseract text recognition.
         img_dir(str): directory to store images in.
+        display_current(bool): if the panorama manager should merge and return
+                               result every time the interval is met.
         """
         self.pt_config = pt_config
-        panorama_manager = ManageFrames(self.pt_config)
-        self.panorama_manager = ManagePanorama(panorama_manager)
+        self.frame_manager = ManageFrames(self.pt_config)
+        self.panorama_manager = ManagePanorama(self.frame_manager)
         self.adjust_h = adjust_h
         self.adjust_w = adjust_w
         self.video_path = video_path
         self.img_dir = f'outputs/{img_dir}/'
+        self.display_current = display_current
         self.start_video()
 
     def start_video(self):
@@ -74,35 +78,29 @@ class RecordLabel:
         panorama manager
         """
         frame = cv2.resize(frame, (self.width, self.height))
-        if not self.is_blurry(frame):
-            self.panorama_manager.add_frame(frame)
+        if not self.frame_manager.is_blurry(frame):
+            frame2 = self.panorama_manager.add_frame(frame)
+            if isinstance(frame2, np.ndarray):
+                cv2.imshow('current_merge', frame2)
             self.frame_n = len(self.panorama_manager.frames)
         else:
             print('blurry frame removed')
             self.save_image('blurry_frame', frame)
-        return frame, self.is_blurry(frame)
-
-    def is_blurry(self, frame: np.ndarray,
-                  threshold: float = 300) -> bool:
-        """
-        Uses cv2 Laplacian to sort out images where
-        not enough edges are detected.
-        Returns True if image blur meet threshold.
-        """
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-        return laplacian_var < threshold
+        return frame, self.frame_manager.is_blurry(frame)
 
     def end_video(self, last_frame: bool | np.ndarray):
         """
         final cleanup.
         """
         if isinstance(last_frame, np.ndarray):
-            print('Final merge done, read image...')
-            if self.panorama_manager.add_frame(last_frame, last_frame=True):
-                print('Final merge successfull')
-        final_image = self.panorama_manager.detect_text()
-        self.save_image('Merged_result', final_image)
+            self.panorama_manager.add_frame(last_frame, last_frame=True)
+        final_image, merge_status = self.panorama_manager.get_final_panorama()
+        if isinstance(final_image, np.ndarray):
+            self.save_image('Merged_result', final_image)
+            cv2.imshow('current_merge', final_image)
+            input('EXIT?')
+        if merge_status:
+            print('Merging succeeded.')
 
     def set_video_values(self, frame: np.ndarray):
         """
