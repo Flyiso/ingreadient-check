@@ -13,7 +13,7 @@ class RecordLabel:
                  adjust_w: float = 1,
                  pt_config: str = '--oem 3 --psm 6',
                  img_dir: str = 'default',
-                 display_current: bool = False) -> None:
+                 display_current: bool = True) -> None:
         """
         Initialise video capture. Manage video feed and
         frame management.
@@ -30,12 +30,14 @@ class RecordLabel:
         """
         self.pt_config = pt_config
         self.frame_manager = ManageFrames(self.pt_config)
-        self.panorama_manager = ManagePanorama(self.frame_manager)
+        self.panorama_manager = ManagePanorama(self.frame_manager,
+                                               display_current=display_current)
         self.adjust_h = adjust_h
         self.adjust_w = adjust_w
         self.video_path = video_path
         self.img_dir = f'outputs/{img_dir}/'
         self.display_current = display_current
+        self.current_merge = False
         self.start_video()
 
     def start_video(self):
@@ -57,9 +59,12 @@ class RecordLabel:
             if self.frame_n == 0:
                 self.set_video_values(frame)
 
-            frame, is_blurry = self.process_image(frame)
+            frame, is_blurry, merged = self.process_image(frame)
 
             cv2.imshow('frame', frame)
+            if isinstance(merged, np.ndarray):
+                cv2.imshow('merged', merged)
+
             if not is_blurry:
                 last_frame = frame
                 self.frame_n += 1
@@ -70,7 +75,8 @@ class RecordLabel:
         cv2.destroyAllWindows()
         self.save_image('merge_result', self.panorama_manager.base)
 
-    def process_image(self, frame: np.ndarray):
+    def process_image(self, frame: np.ndarray) -> tuple[np.ndarray, bool,
+                                                        np.ndarray | bool]:
         """
         Apply correction, enhancement
         and detection methods on frame
@@ -79,14 +85,11 @@ class RecordLabel:
         """
         frame = cv2.resize(frame, (self.width, self.height))
         if not self.frame_manager.is_blurry(frame):
-            frame2 = self.panorama_manager.add_frame(frame)
-            if isinstance(frame2, np.ndarray):
-                cv2.imshow('current_merge', frame2)
-            self.frame_n = len(self.panorama_manager.frames)
+            self.current_merge = self.panorama_manager.add_frame(frame)
         else:
             print('blurry frame removed')
             self.save_image('blurry_frame', frame)
-        return frame, self.frame_manager.is_blurry(frame)
+        return frame, self.frame_manager.is_blurry(frame), self.current_merge
 
     def end_video(self, last_frame: bool | np.ndarray):
         """

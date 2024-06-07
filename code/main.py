@@ -21,7 +21,7 @@ def check_directory(img_dir: str, frame_interval: int):
 
 
 def run_app(filepath, img_dir: str = None,
-            frame_interval: int = 20):
+            frame_interval: int = 23):
     """
     Run all components of application in order-
     filepath: path to video of label
@@ -34,7 +34,7 @@ def run_app(filepath, img_dir: str = None,
     RecordLabel(video_path=filepath,
                 adjust_h=0.45, adjust_w=0.45,
                 pt_config='oem-- 3 --psm 6',
-                img_dir=img_dir)
+                img_dir=img_dir, display_current=False)
 
 
-run_app('videos/test_video_2.mp4', 'vid_2', frame_interval=15)
+run_app('videos/test_video_5.mp4', 'vid_5', frame_interval=15)

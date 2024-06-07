@@ -32,13 +32,19 @@ class ManagePanorama:
         self.frames = []
         self.to_stitch = []
         self.selected = []
+        self.pre_processed = []
         self.base = False
         self.panorama = False
         self.interval = interval
         self.frame_manager = frame_manager
-        self.stitcher = StitcherSet()
         if display_current:
+            self.stitcher = StitcherSet(matcher_type='homography',
+                                        warper_type='transverseMercator',
+                                        compensator='channel_blocks')
             self.stitcher = self.stitcher.get_stitcher()
+            self.last_merge = False
+            return
+        self.stitcher = StitcherSet()
 
     def add_frame(self, frame, last_frame: bool = False) -> bool | np.ndarray:
         """
@@ -55,10 +61,18 @@ class ManagePanorama:
         """
         if len(self.frames) == 0:
             self.frame_manager.set_manager_values(frame)
-        self.frames.append(frame)
+            base_candidate = self.frame_manager.find_label(frame)
+            if isinstance(base_candidate, np.ndarray):
+                self.base = base_candidate
+                self.first_frame = self.base
+                self.frames.append(frame)
+        else:
+            self.frames.append(frame)
         if isinstance(self.stitcher, Stitcher):
             if len(self.frames) % self.interval == 0:
                 self.stitch_current(last_frame)
+            if last_frame is True:
+                self.panorama = self.base
             return self.base
         elif last_frame:
             if self.stitch_frames():
@@ -66,19 +80,25 @@ class ManagePanorama:
                 return self.base
         return False
 
-    def stitch_current(self, final_frame: bool = False) -> bool | np.ndarray:
+    def stitch_current(self,
+                       patience: int = 5) -> bool | np.ndarray:
         """
         Attempts To Stitch the base with the current to-add frames,
         and sets the result as new base.
         """
-        for frame in self.frames[::-1]:
-            frame = self.frame_manager.get_label(frame)
+        for frame in self.frames[:-patience:-1]:
+            frame = self.frame_manager.find_label(frame)
             if isinstance(frame, np.ndarray):
-                stitched = self.stitcher.stitch([self.base, frame])
-                if isinstance(stitched, np.ndarray):
-                    self.base = stitched
-        if final_frame is True:
-            self.panorama = self.base
+                self.pre_processed.append(frame)
+                to_stitch = self.pre_processed[
+                    -1::(len(self.pre_processed)//3)+1]
+                to_stitch.append(self.first_frame)
+                to_stitch.append(self.base)
+                pan = self.stitcher.stitch(to_stitch[::-1])
+                if isinstance(pan, np.ndarray):
+                    self.base = cv2.addWeighted(pan, 0.5, pan, 0.5, 0)
+                    #self.base = pan
+                    return self.base
 
     def stitch_frames(self) -> bool:
         """
@@ -128,7 +148,7 @@ class StitcherSet:
     """
     def __init__(self, try_use_gpu: bool = True,
                  blend_strength: int = 5, block_size: int = 5,
-                 nr_feeds: int = 1, match_conf: float = 0.45,
+                 nr_feeds: int = 1, match_conf: float = 0.4,
                  blender_type: str = 'multiband',
                  compensator: str = 'gain_blocks',
                  detector: str = 'sift',

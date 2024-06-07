@@ -23,8 +23,6 @@ TODO: try panorama mode when scans not working?
 TODO: try to also warp img before merge- 
       take both images into consideration and adjust accordingly?
 
-TODO: explore how/if to customize stitcher.
-
 TODO: make it runable on mobile devices.
       (less pytesseract? more efficient ways to find text region? image segmentation? huggingface?)
 
@@ -40,6 +38,19 @@ TODO: Manage error in stitcher, try to add more images.
 
 TODO: ad text read method for when full image is finally merged.
 
+TODO: Instead of calling dino model for each segmentation, re-use first segmented outline & try
+      find similar shape in frame? (makes application faster/more suitable for small devices?)
+      -TRY -object-tracking- add frame to merge evenly distanced.
+
+TODO: modify for live usage.
+      1-segment label- detect label before asking user to keep item at same distance
+      and start to turn it. (paint label-shaped box on screen to guide user?)
+            a. use that box to detect difference between current and last frame to decide
+               what frames to merge? - could make segmentation part of program less demanding?
+      2. -Live updates of panorama img- force end for video,(improve quality/merge again afterwards?)
+      3. Make it return the final image- connect it all to class/code that connect it to everything else
+         needed for database creation.
+
 2) add option to add label by photo for fully visible labels.
 
 3) Detect words on ingredient label, filter and save by target language.
@@ -47,6 +58,16 @@ TODO: ad text read method for when full image is finally merged.
 4) Databases & relations, make option to connect detected ingredient list to specific product(and barcode?/option to scan just by barcode to avoid DINO/SAM when not necessary?)
 
 5) GUI, user accounts
+
+-- possible attributes(or relations) for each product:
+   id-
+   barcode-(same as id?)
+   img of ingredients(?)-
+   product name
+   product company/creator
+   timestamp when last update
+   ingredients-relational/ingredients might need connections to allergens?
+   possibly connections to user notes about product.
 
 ## Citation
 @article{liu2023grounding,
