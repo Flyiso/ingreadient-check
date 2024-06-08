@@ -37,6 +37,7 @@ class ManagePanorama:
         self.panorama = False
         self.interval = interval
         self.frame_manager = frame_manager
+        self.tracker = cv2.TrackerCSRT_create()
         if display_current:
             self.stitcher = StitcherSet(matcher_type='homography',
                                         warper_type='transverseMercator',
@@ -61,12 +62,24 @@ class ManagePanorama:
         """
         if len(self.frames) == 0:
             self.frame_manager.set_manager_values(frame)
-            base_candidate = self.frame_manager.find_label(frame)
+            base_candidate, _ = self.frame_manager.find_label(
+                frame)
             if isinstance(base_candidate, np.ndarray):
                 self.base = base_candidate
                 self.first_frame = self.base
                 self.frames.append(frame)
+
         else:
+            ret, bbox = self.tracker.update(frame)
+            new_mask = np.zeros_like(frame, dtype=np.uint8)
+            new_mask_points, st, err = \
+                cv2.calcOpticalFlowPyrLK(self.frames[-1],
+                                         frame, self.mask_points.astype(
+                                             np.float32),
+                                         None, **self.lk_params)
+            new_mask[new_mask_points[:, 1].astype(int),
+                     new_mask_points[:, 0].astype(int)] = 255
+            frame = cv2.bitwise_and(frame, frame, mask=new_mask)
             self.frames.append(frame)
         if isinstance(self.stitcher, Stitcher):
             if len(self.frames) % self.interval == 0:
@@ -97,7 +110,6 @@ class ManagePanorama:
                 pan = self.stitcher.stitch(to_stitch[::-1])
                 if isinstance(pan, np.ndarray):
                     self.base = cv2.addWeighted(pan, 0.5, pan, 0.5, 0)
-                    #self.base = pan
                     return self.base
 
     def stitch_frames(self) -> bool:
