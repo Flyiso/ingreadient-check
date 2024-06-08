@@ -33,14 +33,15 @@ def run_app(filepath, img_dir: str = None,
                '--psm 11', '--psm 12', '--psm 13']"""
     if img_dir is not None:
         check_directory(img_dir, frame_interval)
-    image = RecordLabel(video_path=filepath,
+    video = RecordLabel(video_path=filepath,
                         adjust_h=0.45, adjust_w=0.45,
                         pt_config='oem-- 3 --psm 6',
                         img_dir=img_dir, display_current=False)
-    image = image.final_image
+    print('GET TEXT...?')
+    image = video.final_image
     image = ReadText(image=image, pytesseract_config='oem-- 3 --psm 6')
     Img_with_text = image.draw_detected_text()
-    cv2.imwrite(f'{img_dir}Text_written.png', Img_with_text)
+    cv2.imwrite(f'outputs/{img_dir}/Text_written.png', Img_with_text)
 
 
-run_app('videos/test_video_5.mp4', 'vid_5', frame_interval=15)
+run_app('videos/test_video_2.mp4', 'vid_2', frame_interval=15)

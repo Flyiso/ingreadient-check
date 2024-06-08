@@ -35,8 +35,8 @@ class ReadText:
                                 self.text_data['height'][i])
                 text = self.text_data['text'][i]
                 cv2.rectangle(self.image, (x, y), (x + w, y + h),
-                              (0, 255, 0), 2)
+                              (0, 255, 0), 1)
                 cv2.putText(self.image, text, (x, y - 10),
                             cv2.FONT_HERSHEY_SIMPLEX,
-                            0.9, (0, 255, 0), 2)
+                            0.4, (0, 255, 0), 1)
         return self.image

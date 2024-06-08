@@ -37,7 +37,6 @@ class ManagePanorama:
         self.panorama = False
         self.interval = interval
         self.frame_manager = frame_manager
-        self.tracker = cv2.TrackerCSRT_create()
         if display_current:
             self.stitcher = StitcherSet(matcher_type='homography',
                                         warper_type='transverseMercator',
@@ -62,7 +61,7 @@ class ManagePanorama:
         """
         if len(self.frames) == 0:
             self.frame_manager.set_manager_values(frame)
-            base_candidate, _ = self.frame_manager.find_label(
+            base_candidate = self.frame_manager.find_label(
                 frame)
             if isinstance(base_candidate, np.ndarray):
                 self.base = base_candidate
@@ -70,24 +69,18 @@ class ManagePanorama:
                 self.frames.append(frame)
 
         else:
-            ret, bbox = self.tracker.update(frame)
-            new_mask = np.zeros_like(frame, dtype=np.uint8)
-            new_mask_points, st, err = \
-                cv2.calcOpticalFlowPyrLK(self.frames[-1],
-                                         frame, self.mask_points.astype(
-                                             np.float32),
-                                         None, **self.lk_params)
-            new_mask[new_mask_points[:, 1].astype(int),
-                     new_mask_points[:, 0].astype(int)] = 255
-            frame = cv2.bitwise_and(frame, frame, mask=new_mask)
             self.frames.append(frame)
+
         if isinstance(self.stitcher, Stitcher):
+            print('STITCHER?')
             if len(self.frames) % self.interval == 0:
                 self.stitch_current(last_frame)
             if last_frame is True:
                 self.panorama = self.base
             return self.base
+
         elif last_frame:
+            print('LAST FRAME?')
             if self.stitch_frames():
                 cv2.imwrite('progress_images/base.png', self.base)
                 return self.base
@@ -121,6 +114,8 @@ class ManagePanorama:
             self.frames, len(self.frames)//self.interval)
         print('frames collected...')
         stitcher = self.stitcher.get_stitcher()
+        print(type(stitcher))
+        print(len(self.to_stitch))
         try:
             panorama = stitcher.stitch(self.to_stitch)
         except stitching_error.StitchingError:

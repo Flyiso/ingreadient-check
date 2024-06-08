@@ -38,8 +38,7 @@ class ManageFrames:
             checkpoint=sam_checkpoint_path).to(device=device)
         self.sam_predictor = SamPredictor(self.sam_model)
 
-    def find_label(self, frame) -> tuple[np.ndarray | bool,
-                                         np.ndarray | bool]:
+    def find_label(self, frame) -> np.ndarray | bool:
         """
         Finds label on product, calls methods to try to
         correct its perspective, and enhances it.
@@ -64,8 +63,8 @@ class ManageFrames:
         img = self.cylindrical_unwrap(frame, roi_mask)
         if isinstance(img, np.ndarray):
             img = self.enhance_frame(img)
-            return img, roi_mask
-        return False, False
+            return img
+        return False
 
     def segment_label(self, frame, xyxy: np.ndarray) -> np.ndarray:
         """

@@ -73,8 +73,6 @@ class RecordLabel:
 
         self.capture.release()
         cv2.destroyAllWindows()
-        self.save_image('merge_result', self.panorama_manager.base)
-        self.final_image = self.panorama_manager.base
 
     def process_image(self, frame: np.ndarray) -> tuple[np.ndarray, bool,
                                                         np.ndarray | bool]:
@@ -105,6 +103,7 @@ class RecordLabel:
             input('EXIT?')
         if merge_status:
             print('Merging succeeded.')
+            self.final_image = final_image
 
     def set_video_values(self, frame: np.ndarray):
         """
