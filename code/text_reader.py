@@ -39,4 +39,5 @@ class ReadText:
                 cv2.putText(self.image, text, (x, y - 10),
                             cv2.FONT_HERSHEY_SIMPLEX,
                             0.4, (0, 255, 0), 1)
+        print(self.text_data['text'])
         return self.image

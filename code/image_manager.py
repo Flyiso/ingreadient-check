@@ -47,7 +47,6 @@ class ManageFrames:
 
         returns mask for roi if found, else returns False
         """
-        print('FIND LABEL')
         detections = self.dino_model.predict_with_classes(
             image=frame,
             classes=self.enhance_class_names(),
@@ -71,8 +70,6 @@ class ManageFrames:
         Use GroundedSAM to detect and get mask for text/label area
         of image.
         """
-        # why this? copyright/license reasons?
-        print('SEGMENT LABEL')
         self.sam_predictor.set_image(frame, image_format='RGB')
         result_masks = []
         for box in xyxy:
@@ -87,7 +84,6 @@ class ManageFrames:
         Enhances class names by specifying prompt details.
         Returns updated list.
         """
-        print('ENHANCE CLASS NAMES')
         return [
             f"{class_name}"
             for class_name
@@ -103,7 +99,7 @@ class ManageFrames:
         method to set threshold values for image
         enhancement
         """
-        print('SET MANAGER VALUES')
+        print('SET MANAGER VALUES (this not run?)')
         frame_data = self.find_text(frame)
         self.set_threshold_values(frame, frame_data)
 
@@ -113,7 +109,6 @@ class ManageFrames:
         Returns data dictionary of the text
         found in the frame.
         """
-        print('FIND_TEXT')
         print(type(frame))
         data = pt.image_to_data(image=frame, config=self.pt_config,
                                 output_type=output_type)
@@ -127,7 +122,6 @@ class ManageFrames:
         returns enhanced frame.
         """
         # hue thresh to correct light
-        print('ENHANCE FRAME')
         frame = self.enhance_text_lightness(frame)
         return frame
 
@@ -135,7 +129,6 @@ class ManageFrames:
         """
         Enhance text by perceptual lightness
         """
-        print('ENHANCE TEXT LIGHTNESS')
         frame2 = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
         clahe = cv2.createCLAHE(clipLimit=1.7, tileGridSize=(5, 5))
         frame_planes = list(cv2.split(frame2))
@@ -149,7 +142,6 @@ class ManageFrames:
         adjust threshold to the most text-populated area.
         get threshold for grayscale and HSV values.
         """
-        print('SET THRESHOLD VALUES')
         img_x = int(np.mean(frame_data['top']))
         img_y = int(np.mean(frame_data['left']))
         img_w = int(np.mean(frame_data['width']))
