@@ -9,6 +9,8 @@ TODO: test to crop as large as possible rectangular image from by-text-rotated i
 TODO: Test label_video_reader with more videos and images to modify and make application
       usable for all kinds of ingredients lists.
 
+TODO: try use depth as guide when correcting perspective.
+
 TODO: control of distance between images in each merge?.
 TODO: Try to use panorama mode for stitcher every x
       merge(with high thresh?) to avoid loosing first img section
