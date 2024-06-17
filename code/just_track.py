@@ -17,4 +17,6 @@ class TrackVideo:
         # merge the images.
         # compare result + performance.
         # (evaluate result when done- make sure panorama covers all of the label)
+        # https://www.youtube.com/watch?v=oDALtKbprHg
+        # https://www.youtube.com/watch?v=GgGro5IV-cs
         pass
