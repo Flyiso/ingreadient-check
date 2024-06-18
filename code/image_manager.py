@@ -3,6 +3,7 @@ File that collect all image enhancement, manipulation, et cetera.
 contains methods for segmentation of ROI, corrections of perspective,
 correction of lightning conditions and more
 """
+from depth_estimator import DepthCorrection
 from groundingdino.util.inference import Model
 from segment_anything import sam_model_registry, SamPredictor
 from typing import List
@@ -59,6 +60,24 @@ class ManageFrames:
                                                         detections=detections,
                                                         opacity=1),
                                 cv2.COLOR_BGR2GRAY)
+        _, binary_mask = cv2.threshold(roi_mask, 5, 255, cv2.THRESH_BINARY)
+        cv2.imwrite('mask.png', roi_mask)
+        contours, _ = cv2.findContours(binary_mask, 1, 2)
+        if len(contours) >= 1:
+            x, y, w, h = cv2.boundingRect(max(contours, key=cv2.contourArea))
+            print(roi_mask.shape)
+            print(x, y, w, h)
+            img_to_depth = cv2.bitwise_and(frame,
+                                           cv2.cvtColor(binary_mask,
+                                                        cv2.COLOR_GRAY2RGB),
+                                           binary_mask)
+            img_to_depth = img_to_depth[y:y+h, x:x+w]
+            for val in list(cv2.resize(img_to_depth,
+                                       (img_to_depth.shape[0]//5,
+                                        img_to_depth.shape[1]//5))):
+                vals = ['O' if list(px) == [0, 0, 0] else ' ' for px in val]
+                print(''.join(vals))
+            DepthCorrection(img_to_depth)
         img = self.cylindrical_unwrap(frame, roi_mask)
         if isinstance(img, np.ndarray):
             img = self.enhance_frame(img)
