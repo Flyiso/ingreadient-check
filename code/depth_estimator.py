@@ -111,6 +111,8 @@ class DepthCorrection:
                 # sum limit of values to add close to each other? lots of 0
                 # does not change anything, but high values cant be close? 
                 # some neighbor limit? (max 225 in 3*3 ngh? or similar?)
+                # go with max then? or use mean(median better?)
+                # just fill a list?
                 displacement = depth_mask[y, x] * max_displacement
                 displacement_h = depth_mask[y, x] * max_displacement_h
                 map_x[y, x] = x + displacement * x / width
