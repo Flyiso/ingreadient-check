@@ -95,15 +95,19 @@ class DepthCorrection:
         max_displacement = width / 2
         max_displacement_h = height / 2
         for y in range(height):
-            print(depth_mask[y])
             for x in range(width):
+                print(f'x: {depth_mask[x]}')
+                print(f'y: {[w_vals[y] for w_vals in depth_mask]}')
+                print('.....')
+                input('')
                 (width//2-x)  # distance to center width.
                 (height//2-y)  # distance to center height
-                (width//2)  # maximum width distance
+                (width//2)  # maximum width distanc
                 (height//2)  # maximum distance height
                 # get displacement maps from middle distance & depth_mask?
                 # depth_mask increase values for push and pull?
                 # skip add all 0 to closest corner? or edge? or ignore them?
+                # use some distrobution to get how much to adjust? 
                 displacement = depth_mask[y, x] * max_displacement
                 displacement_h = depth_mask[y, x] * max_displacement_h
                 map_x[y, x] = x + displacement * x / width
