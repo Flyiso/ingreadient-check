@@ -107,7 +107,10 @@ class DepthCorrection:
                 # get displacement maps from middle distance & depth_mask?
                 # depth_mask increase values for push and pull?
                 # skip add all 0 to closest corner? or edge? or ignore them?
-                # use some distrobution to get how much to adjust? 
+                # use some distribution to get how much to adjust?
+                # sum limit of values to add close to each other? lots of 0
+                # does not change anything, but high values cant be close? 
+                # some neighbor limit? (max 225 in 3*3 ngh? or similar?)
                 displacement = depth_mask[y, x] * max_displacement
                 displacement_h = depth_mask[y, x] * max_displacement_h
                 map_x[y, x] = x + displacement * x / width
