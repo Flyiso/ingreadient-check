@@ -160,7 +160,15 @@ class DepthCorrection:
             if g_id in remain_ids:
                 total += 1
             to_add = total/(len(group['pixel_ids']))
-            # HERE size/color of eack pixel should matter- w low value pixels should be bunched together
+            # HERE size/color of each pixel should matter- w low value pixels
+            # should be bunched together
+            # MAIN Thought- the gradient of printed maps
+            # should be very soft and even close to the middle.
+            # edges/toward curve of flask, it should
+            # be change in an increasing/decreasing
+            # speed/change that is exponential,
+            #  w low delta close to middle.
+            # but maybe more 'soft'?
             for n in range(1, len(group['pixel_ids'])+1):
                 return_map.append(round((used_ids+(to_add*n))))
             used_ids += total
