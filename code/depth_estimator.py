@@ -168,7 +168,12 @@ class DepthCorrection:
             # be change in an increasing/decreasing
             # speed/change that is exponential,
             #  w low delta close to middle.
-            # but maybe more 'soft'?
+            # but maybe more 'soft'? m=0? derivata?
+            # somehow adjust to half-circle?
+            # x1 = 0, x2 = len(pixels)
+            # vertex = len(pixels)/2?
+            # f'(pixels) = 0
+            # f'(close to edges) = high
             for n in range(1, len(group['pixel_ids'])+1):
                 return_map.append(round((used_ids+(to_add*n))))
             used_ids += total
