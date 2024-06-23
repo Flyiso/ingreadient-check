@@ -10,6 +10,7 @@ import cv2
 import heapq
 from transformers import pipeline
 from PIL import Image
+import csv
 
 
 class DepthCorrection:
@@ -133,6 +134,21 @@ class DepthCorrection:
         pixels: depth pixels of half of the height
                 or width currently working with
         """
+        #pixel_a = np.array(pixels)
+        pixel_a = cv2.normalize(pixels, None, 0, 255, cv2.NORM_MINMAX)
+        with open('numbers.csv', 'w') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=['X', 'Y', 'Y2'])
+            writer.writeheader()
+            n_s = []
+            n_dict = []
+            for nu, pix in enumerate(pixel_a):
+                n_s.append(pix)
+                n_dict.append({'X': nu, 'Y': pix[-1]})
+            n_s.sort()
+            for n_r, d_n in zip(n_s, n_dict):
+                d_n['Y2'] = n_r[-1]
+            writer.writerows(n_dict)
+        input('')
         pxl_groups = []
         curr_group = {'pixel_ids': [], 'pxl_sum': []}
         for pxl_id, pxl in enumerate(pixels):
@@ -171,7 +187,7 @@ class DepthCorrection:
             # but maybe more 'soft'? m=0? derivata?
             # somehow adjust to half-circle?
             # x1 = 0, x2 = len(pixels)
-            # vertex = len(pixels)/2?
+            # vertex = len(pixels)/2
             # f'(pixels) = 0
             # f'(close to edges) = high
             for n in range(1, len(group['pixel_ids'])+1):
