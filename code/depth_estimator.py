@@ -190,6 +190,7 @@ class DepthCorrection:
             # vertex = len(pixels)/2
             # f'(pixels) = 0
             # f'(close to edges) = high
+            # distance to mid/where original has valley and height/y value relationship?
             for n in range(1, len(group['pixel_ids'])+1):
                 return_map.append(round((used_ids+(to_add*n))))
             used_ids += total
