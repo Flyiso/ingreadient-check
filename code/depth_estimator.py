@@ -191,6 +191,8 @@ class DepthCorrection:
             # f'(pixels) = 0
             # f'(close to edges) = high
             # distance to mid/where original has valley and height/y value relationship?
+            # TRY:
+            # middle = 1*(225//2), sides=use 0.0-1 and 1-2 and depth mask value 
             for n in range(1, len(group['pixel_ids'])+1):
                 return_map.append(round((used_ids+(to_add*n))))
             used_ids += total
