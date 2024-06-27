@@ -76,17 +76,19 @@ class DepthCorrection:
 
         cv2.imwrite('d_msk.png', depth_mask)
         height, width = depth_mask.shape
-        map_a = np.array(
-            [self.get_map_row(depth_mask[y])
-             for y in range(height)]).astype(np.float32)
-        map_b = np.transpose(np.array(
-            [self.get_map_row([w_vals[x]
-             for w_vals in depth_mask])
-             for x in range(0, width)])).astype(np.float32)
+
+        map_a = np.array([self.get_map_row(depth_mask[y])
+                          for y in range(height)]).astype(np.float32)
+
+        map_b = np.transpose(np.array([
+            self.get_map_row([w_vals[x] for w_vals in depth_mask])
+            for x in range(width)
+            ]), (1, 0, 2)).astype(np.float32)
+
         map_a = cv2.normalize(map_a, None, 0, 255, cv2.NORM_MINMAX)
-        map_b = cv2.normalize(map_b, None, 255, 0, cv2.NORM_MINMAX)
-        map_a = cv2.blur(map_a, (95, 95))
-        map_b = cv2.blur(map_b, (95, 95))
+        map_b = cv2.normalize(map_b, None, 0, 255, cv2.NORM_MINMAX)
+        print(map_a)
+        print(map_b)
         #map_a = cv2.medianBlur(map_a, 5)
         #map_b = cv2.medianBlur(map_b, 5)
         #map_a = cv2.GaussianBlur(map_a, (95, 95), 100)
@@ -97,8 +99,8 @@ class DepthCorrection:
         #map_b = cv2.bitwise_xor(map_b)
         cv2.imwrite('map_a.png', map_a)
         cv2.imwrite('map_b.png', map_b)
-        map_a = cv2.normalize(map_a, None, 0, width, cv2.NORM_MINMAX)
-        map_b = cv2.normalize(map_b, None, 0, height, cv2.NORM_MINMAX)
+        #map_a = cv2.normalize(map_a, None, 0, width, cv2.NORM_MINMAX)
+        #map_b = cv2.normalize(map_b, None, 0, height, cv2.NORM_MINMAX)
 
         flattened_image = cv2.remap(frame, map_a, map_b,
                                     interpolation=cv2.INTER_LANCZOS4,
@@ -110,39 +112,30 @@ class DepthCorrection:
         """
         uses self.distribute to get values for map.
         """
-        #map_a = self.distribute(pixel_row
-        #                        [:((len(pixel_row))//2)])
-        #map_b = self.distribute(pixel_row[(len(pixel_row)//2)::])
-        #print('......')
-        #print(pixel_row)
-        #print(map_a)
-        #print(map_b)
-        #if len(map_a+map_b) == len(pixel_row):
-        #    fin_map = map_b[::-1]+map_a
-        #    return fin_map
         map_row = self.distribute_pixels(pixel_row)
         if len(map_row) == len(pixel_row):
+            print(f'{len(map_row)}/{len(pixel_row)}--OK!')
             return map_row
         else:
+            print(pixel_row)
+            print(map_row)
             print(len(pixel_row)//2)
             print(len(pixel_row) % 2)
-            print(f'img_section_original: {len(pixel_row)}')
-            print(f'img_section_new_size: {len(map_a + map_b)}')
             print('.......')
+            input('FEL????')
 
     def distribute_pixels(self, pixels) -> np.ndarray:
         """
         returns the pixels with their new placement.
         figures out what method to use to distribute and uses it.
         """
-        non_zero = [n for n in pixels if n < 0]
-
+        non_zero = [n for n in pixels if n > 0]
         if sum(non_zero[len(non_zero)//3:
                         (len(non_zero)//3)*2]
                ) < sum(non_zero[:len(non_zero)//3]) and\
             sum(non_zero[len(non_zero)//3:
                          (len(non_zero)//3)*2]
-                ) < sum(non_zero[(len(non_zero//3))*2:]):
+                ) < sum(non_zero[(len(non_zero)//3)*2:]):
             self.X = pixels  # Remove when plotting/test is done
             pixels = self.distribute_surface(pixels)
             self.X_NEW = pixels  # Remove when plotting/test is done
@@ -152,7 +145,7 @@ class DepthCorrection:
             pixels = self.distribute_perspective(pixels)
             self.Y_NEW = pixels  # Remove when plotting/test is done
         pixels = np.array(pixels)
-        pixels = cv2.normalize(pixels, None, 0, len(pixels))
+        pixels = cv2.normalize(pixels, None, 0, len(pixels), cv2.NORM_MINMAX)
 
         # Temporary code to get csv_file for comparing methods.
         if isinstance(self.X, dict) and isinstance(self.Y, dict):
@@ -164,11 +157,17 @@ class DepthCorrection:
                                        cv2.NORM_MINMAX)
             with open('numbers.csv', 'w') as csvfile:
                 writer = csv.DictWriter(csvfile,
-                                        fieldnames=['X', 'X_NEW', 'Y', 'Y_NEW'])
+                                        fieldnames=['X', 'X_NEW',
+                                                    'Y', 'Y_NEW'])
                 writer.writeheader()
                 writer.writerows(val_dict)
             input('end...?')
         # End of temporary block.
+        import types
+        if isinstance(pixels, types.GeneratorType):
+            print('GENERATOR?')
+            print(pixels)
+            input('?????')
         return pixels
 
     def distribute_surface(self, pixels) -> list:
@@ -176,6 +175,7 @@ class DepthCorrection:
         distribute pixels, assuming middle of pixels are closer to camera
         to lowest value.
         """
+        print('S')
         return_map = []
         multipliers = np.linspace(0, 2, len(pixels))
         for pixel_id, (pixel, multiplier) in enumerate(zip(pixels, multipliers)):
@@ -190,7 +190,7 @@ class DepthCorrection:
         return_map = []
         for pixel_id, (pixel_value,
                        pixel_multiplier) in enumerate(zip(
-                           pixels, np.linspace(0, len(pixels)))):
+                           pixels, np.linspace(0, 255, len(pixels)))):
             return_map.append(pixel_id-(pixel_value*pixel_multiplier))
         return return_map
 
