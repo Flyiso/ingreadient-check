@@ -163,11 +163,6 @@ class DepthCorrection:
                 writer.writerows(val_dict)
             input('end...?')
         # End of temporary block.
-        import types
-        if isinstance(pixels, types.GeneratorType):
-            print('GENERATOR?')
-            print(pixels)
-            input('?????')
         return pixels
 
     def distribute_surface(self, pixels) -> list:
@@ -178,8 +173,9 @@ class DepthCorrection:
         print('S')
         return_map = []
         multipliers = np.linspace(0, 2, len(pixels))
-        for pixel_id, (pixel, multiplier) in enumerate(zip(pixels, multipliers)):
-            return_map.append(pixel_id-(pixel*multiplier))
+        for pixel_id, (pixel, multiplier) in enumerate(zip(pixels,
+                                                           multipliers)):
+            return_map.append(int(pixel_id)-(pixel*multiplier))
         return return_map
 
     def distribute_perspective(self, pixels) -> list:
@@ -190,7 +186,7 @@ class DepthCorrection:
         return_map = []
         for pixel_id, (pixel_value,
                        pixel_multiplier) in enumerate(zip(
-                           pixels, np.linspace(0, 255, len(pixels)))):
+                           pixels, np.linspace(-1, 1, len(pixels)))):
             return_map.append(pixel_id-(pixel_value*pixel_multiplier))
         return return_map
 
