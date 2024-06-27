@@ -21,6 +21,7 @@ class DepthCorrection:
     method just correct by values?
     """
     def __init__(self, frame: np.ndarray) -> None:
+        self.X, self.Y = (False, False)
         frame_bgra = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
         alpha_channel = np.where(
             (frame[:, :, 0] == 0) &
@@ -119,9 +120,9 @@ class DepthCorrection:
         #if len(map_a+map_b) == len(pixel_row):
         #    fin_map = map_b[::-1]+map_a
         #    return fin_map
-        map_row = self.distribute(pixel_row)
+        map_row = self.distribute_pixels(pixel_row)
         if len(map_row) == len(pixel_row):
-            return map_row[::]
+            return map_row
         else:
             print(len(pixel_row)//2)
             print(len(pixel_row) % 2)
@@ -135,17 +136,39 @@ class DepthCorrection:
         figures out what method to use to distribute and uses it.
         """
         non_zero = [n for n in pixels if n < 0]
+
         if sum(non_zero[len(non_zero)//3:
                         (len(non_zero)//3)*2]
                ) < sum(non_zero[:len(non_zero)//3]) and\
             sum(non_zero[len(non_zero)//3:
                          (len(non_zero)//3)*2]
                 ) < sum(non_zero[(len(non_zero//3))*2:]):
+            self.X = pixels  # Remove when plotting/test is done
             pixels = self.distribute_surface(pixels)
+            self.X_NEW = pixels  # Remove when plotting/test is done
+
         else:
+            self.Y = pixels  # Remove when plotting/test is done
             pixels = self.distribute_perspective(pixels)
+            self.Y_NEW = pixels  # Remove when plotting/test is done
         pixels = np.array(pixels)
         pixels = cv2.normalize(pixels, None, 0, len(pixels))
+
+        # Temporary code to get csv_file for comparing methods.
+        if isinstance(self.X, dict) and isinstance(self.Y, dict):
+            val_dict = {'X': list(self.X), 'X_new': list(self.X_NEW),
+                        'Y': list(self.Y), 'Y_NEW': list(self.Y_NEW)}
+            self.Y_NEW = cv2.normalize(self.Y_NEW, None, 0, 255,
+                                       cv2.NORM_MINMAX)
+            self.X_NEW = cv2.normalize(self.X_NEW, None, 0, 255,
+                                       cv2.NORM_MINMAX)
+            with open('numbers.csv', 'w') as csvfile:
+                writer = csv.DictWriter(csvfile,
+                                        fieldnames=['X', 'X_NEW', 'Y', 'Y_NEW'])
+                writer.writeheader()
+                writer.writerows(val_dict)
+            input('end...?')
+        # End of temporary block.
         return pixels
 
     def distribute_surface(self, pixels) -> list:
@@ -156,7 +179,7 @@ class DepthCorrection:
         return_map = []
         multipliers = np.linspace(0, 2, len(pixels))
         for pixel_id, (pixel, multiplier) in enumerate(zip(pixels, multipliers)):
-            return_map.append(pixel_id*(pixel*multiplier))
+            return_map.append(pixel_id-(pixel*multiplier))
         return return_map
 
     def distribute_perspective(self, pixels) -> list:
@@ -168,7 +191,7 @@ class DepthCorrection:
         for pixel_id, (pixel_value,
                        pixel_multiplier) in enumerate(zip(
                            pixels, np.linspace(0, len(pixels)))):
-            return_map.append(pixel_id*(pixel_value*pixel_multiplier))
+            return_map.append(pixel_id-(pixel_value*pixel_multiplier))
         return return_map
 
     def distribute(self, pixels):
@@ -208,60 +231,3 @@ class DepthCorrection:
                 d_n['Y3'] = der_v[0]
             writer.writerows(n_dict)
         input('')
-        pxl_groups = []
-        curr_group = {'pixel_ids': [], 'pxl_sum': []}
-        for pxl_id, pxl in enumerate(pixels):
-            if sum(curr_group['pxl_sum']) + pxl <= 255:
-                curr_group['pxl_sum'].append(pxl)
-                curr_group['pixel_ids'].append(pxl_id)
-            else:
-                pxl_groups.append(curr_group)
-                curr_group = {'pixel_ids': [pxl_id], 'pxl_sum': [pxl]}
-        if len(curr_group['pixel_ids']) != 0:
-            pxl_groups.append(curr_group)
-
-        pxl_space = (len(pixels)) / (len(pxl_groups))
-        pxl_remain = (len(pixels)) % (len(pxl_groups))
-        remain_ids = heapq.nlargest(pxl_remain,
-                                    range(len(pxl_groups)),
-                                    key=lambda i: sum(pxl_groups[i]['pxl_sum']))
-        return_map = []
-        used_ids = 0
-        size = []
-        #  each g_id = one new value in return map.
-        for g_id, group in enumerate(pxl_groups):
-            size.append(len(group['pixel_ids']))
-            total = pxl_space
-            if g_id in remain_ids:
-                total += 1
-            to_add = total/(len(group['pixel_ids']))
-            # HERE size/color of each pixel should matter- w low value pixels
-            # should be bunched together
-            # MAIN Thought- the gradient of printed maps
-            # should be very soft and even close to the middle.
-            # edges/toward curve of flask, it should
-            # be change in an increasing/decreasing
-            # speed/change that is exponential,
-            #  w low delta close to middle.
-            # but maybe more 'soft'? m=0? derivata?
-            # somehow adjust to half-circle?
-            # x1 = 0, x2 = len(pixels)
-            # vertex = len(pixels)/2
-            # f'(pixels) = 0
-            # f'(close to edges) = high
-            # distance to mid/where original has valley and height/y value relationship?
-            # TRY:
-            # middle = 1*(225//2), sides=use 0.0-1 and 1-2 and depth mask value 
-            for n in range(len(group['pixel_ids'])):
-                len
-                return_map.append(round((used_ids+(to_add*n))))
-            used_ids += total
-        print(size)
-        print('....')
-
-        if len(return_map) == len(pixels):
-            return_map.sort()
-            return return_map
-
-        print(f'img_section_original: {len(pixels)}')
-        print(f'img_section_new_size: {len(return_map)}')
