@@ -77,6 +77,8 @@ class DepthCorrection:
         cv2.imwrite('d_msk.png', depth_mask)
         height, width = depth_mask.shape
 
+        depth_mask = cv2.medianBlur(depth_mask, 55)
+        cv2.imwrite('d_msk_blr.png', depth_mask)
         map_a = np.array([self.get_map_row(depth_mask[y])
                           for y in range(height)]).astype(np.float32)
 
@@ -85,26 +87,30 @@ class DepthCorrection:
             for x in range(width)
             ]), (1, 0, 2)).astype(np.float32)
 
-        map_a = cv2.normalize(map_a, None, 0, 255, cv2.NORM_MINMAX)
-        map_b = cv2.normalize(map_b, None, 0, 255, cv2.NORM_MINMAX)
-        print(map_a)
-        print(map_b)
-        #map_a = cv2.medianBlur(map_a, 5)
-        #map_b = cv2.medianBlur(map_b, 5)
-        #map_a = cv2.GaussianBlur(map_a, (95, 95), 100)
-        #map_b = cv2.GaussianBlur(map_b, (95, 95), 100)
+        map_a = cv2.normalize(map_a, None, 0, 255, cv2.NORM_MINMAX)  # remove
+        map_b = cv2.normalize(map_b, None, 0, 255, cv2.NORM_MINMAX)  # remove
+        #map_a = cv2.medianBlur(map_a, 35)
+        #map_b = cv2.medianBlur(map_b, 35)
+        blr_h = height
+        blr_w = width
+        if blr_h % 2 == 0:
+            blr_h -= 1
+        if blr_w % 2 == 0:
+            blr_w -= 1
+        map_a = cv2.GaussianBlur(map_a, (5, blr_h), 100)
+        map_b = cv2.GaussianBlur(map_b, (blr_w, 5), 100)
         #map_a = cv2.bilateralFilter(map_a, 9, 75, 75)
         #map_b = cv2.bilateralFilter(map_b, 9, 75, 75)
         #map_a = cv2.bitwise_xor(map_a)
         #map_b = cv2.bitwise_xor(map_b)
-        cv2.imwrite('map_a.png', map_a)
-        cv2.imwrite('map_b.png', map_b)
-        #map_a = cv2.normalize(map_a, None, 0, width, cv2.NORM_MINMAX)
-        #map_b = cv2.normalize(map_b, None, 0, height, cv2.NORM_MINMAX)
+        #cv2.imwrite('map_a.png', map_a)
+        #cv2.imwrite('map_b.png', map_b)
+        map_a = cv2.normalize(map_a, None, 0, width, cv2.NORM_MINMAX)
+        map_b = cv2.normalize(map_b, None, 0, height, cv2.NORM_MINMAX)
 
         flattened_image = cv2.remap(frame, map_a, map_b,
                                     interpolation=cv2.INTER_LANCZOS4,
-                                    borderMode=cv2.BORDER_WRAP)
+                                    borderMode=cv2.BORDER_DEFAULT)
         cv2.imwrite('flat_img.png', flattened_image)
         self.frame = flattened_image
 
@@ -119,17 +125,18 @@ class DepthCorrection:
         else:
             print(pixel_row)
             print(map_row)
-            print(len(pixel_row)//2)
-            print(len(pixel_row) % 2)
-            print('.......')
-            input('FEL????')
 
     def distribute_pixels(self, pixels) -> np.ndarray:
         """
         returns the pixels with their new placement.
         figures out what method to use to distribute and uses it.
         """
+
+        print(pixels)
         non_zero = [n for n in pixels if n > 0]
+        pixels = cv2.normalize(np.array(pixels), None, 0, 255, cv2.NORM_MINMAX)
+        pixels = [int(pixel) for pixel in pixels]
+        print(pixels)
         if sum(non_zero[len(non_zero)//3:
                         (len(non_zero)//3)*2]
                ) < sum(non_zero[:len(non_zero)//3]) and\
@@ -146,6 +153,7 @@ class DepthCorrection:
             self.Y_NEW = pixels  # Remove when plotting/test is done
         pixels = np.array(pixels)
         pixels = cv2.normalize(pixels, None, 0, len(pixels), cv2.NORM_MINMAX)
+        pixels = np.sort(pixels)
 
         # Temporary code to get csv_file for comparing methods.
         if isinstance(self.X, dict) and isinstance(self.Y, dict):
@@ -169,13 +177,20 @@ class DepthCorrection:
         """
         distribute pixels, assuming middle of pixels are closer to camera
         to lowest value.
+        TODO:
+        modify to get more space to high depth value
         """
-        print('S')
         return_map = []
-        multipliers = np.linspace(0, 2, len(pixels))
+        #pixels = pixels.tolist()
+        multipliers = np.linspace(0, 1, len(pixels))
         for pixel_id, (pixel, multiplier) in enumerate(zip(pixels,
                                                            multipliers)):
-            return_map.append(int(pixel_id)-(pixel*multiplier))
+            if pixel == 0:
+                pixel = 255*round(multiplier)
+
+            return_map.append((pixel/255*(round(multiplier)+pixel_id))*((multiplier/pixel_id+1)))
+            #return_map.append((pixel_id*multiplier)*abs(-round(multiplier)*(255-(255-pixel))))
+            #return_map.append(multiplier*multiplier*pixel)
         return return_map
 
     def distribute_perspective(self, pixels) -> list:
@@ -195,7 +210,6 @@ class DepthCorrection:
         pixels: depth pixels of half of the height
                 or width currently working with
         """
-        #pixel_a = np.array(pixels)
         pixel_a = cv2.normalize(pixels, None, 0, 255, cv2.NORM_MINMAX)
         with open('numbers.csv', 'w') as csvfile:
             writer = csv.DictWriter(csvfile,
