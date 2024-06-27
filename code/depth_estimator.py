@@ -129,6 +129,17 @@ class DepthCorrection:
             print(f'img_section_new_size: {len(map_a+map_b)}')
             print('.......')
 
+    def distribute_perspective_w(self, pixels):
+        """
+        distribute pixels by the axis that depth goes from highest
+        to lowest value.
+        """
+        return_map = []
+        multipliers = np.linspace(0, 2, len(pixels))
+        for idx, (pixel, multiplier) in enumerate(zip(pixels, multipliers)):
+            return_map.append(idx-(pixel*multiplier))
+        return return_map
+
     def distribute(self, pixels):
         """
         pixels: depth pixels of half of the height
@@ -137,16 +148,33 @@ class DepthCorrection:
         #pixel_a = np.array(pixels)
         pixel_a = cv2.normalize(pixels, None, 0, 255, cv2.NORM_MINMAX)
         with open('numbers.csv', 'w') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=['X', 'Y', 'Y2'])
+            writer = csv.DictWriter(csvfile,
+                                    fieldnames=['X', 'Y1', 'Y2', 'Y3'])
             writer.writeheader()
             n_s = []
+            x = []
+            y = []
             n_dict = []
             for nu, pix in enumerate(pixel_a):
+                x.append(nu)
+                y.append(pix)
                 n_s.append(pix)
-                n_dict.append({'X': nu, 'Y': pix[-1]})
+                n_dict.append({'X': nu, 'Y1': pix[-1]})
             n_s.sort()
-            for n_r, d_n in zip(n_s, n_dict):
+            dy_dx = np.zeros_like(y, dtype=float)
+            for i in range(len(x)):
+                if i == 0:  # Forward difference for the first point
+                    dy_dx[i] = (y[i+1] - y[i]) / (x[i+1] - x[i])
+                elif i == len(x) - 1:  # Backward difference for the last point
+                    dy_dx[i] = (y[i] - y[i-1]) / (x[i] - x[i-1])
+                else:  # Central difference for interior points
+                    dy_dx[i] = (y[i+1] - y[i-1]) / (x[i+1] - x[i-1])
+
+            dy_dx = list(dy_dx)
+            dy_dx.sort()
+            for n_r, d_n, der_v in zip(n_s, n_dict, dy_dx):
                 d_n['Y2'] = n_r[-1]
+                d_n['Y3'] = der_v[0]
             writer.writerows(n_dict)
         input('')
         pxl_groups = []
@@ -190,7 +218,9 @@ class DepthCorrection:
             # vertex = len(pixels)/2
             # f'(pixels) = 0
             # f'(close to edges) = high
-            for n in range(1, len(group['pixel_ids'])+1):
+            # placement*value
+            for n in range(len(group['pixel_ids'])):
+                len
                 return_map.append(round((used_ids+(to_add*n))))
             used_ids += total
         print(size)
