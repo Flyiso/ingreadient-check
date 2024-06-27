@@ -126,7 +126,7 @@ class DepthCorrection:
             print(len(pixel_row)//2)
             print(len(pixel_row) % 2)
             print(f'img_section_original: {len(pixel_row)}')
-            print(f'img_section_new_size: {len(map_a+map_b)}')
+            print(f'img_section_new_size: {len(map_a + map_b)}')
             print('.......')
 
     def distribute_perspective_w(self, pixels):
@@ -218,6 +218,10 @@ class DepthCorrection:
             # vertex = len(pixels)/2
             # f'(pixels) = 0
             # f'(close to edges) = high
+            # distance to mid/where original has valley and height/y value relationship?
+            # TRY:
+            # middle = 1*(225//2), sides=use 0.0-1 and 1-2 and depth mask value 
+            for n in range(1, len(group['pixel_ids'])+1):
             # placement*value
             for n in range(len(group['pixel_ids'])):
                 len
