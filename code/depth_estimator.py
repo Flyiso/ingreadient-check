@@ -129,15 +129,46 @@ class DepthCorrection:
             print(f'img_section_new_size: {len(map_a + map_b)}')
             print('.......')
 
-    def distribute_perspective_w(self, pixels):
+    def distribute_pixels(self, pixels) -> np.ndarray:
         """
-        distribute pixels by the axis that depth goes from highest
+        returns the pixels with their new placement.
+        figures out what method to use to distribute and uses it.
+        """
+        non_zero = [n for n in pixels if n < 0]
+        if sum(non_zero[len(non_zero)//3:
+                        (len(non_zero)//3)*2]
+               ) < sum(non_zero[:len(non_zero)//3]) and\
+            sum(non_zero[len(non_zero)//3:
+                         (len(non_zero)//3)*2]
+                ) < sum(non_zero[(len(non_zero//3))*2:]):
+            pixels = self.distribute_surface(pixels)
+        else:
+            pixels = self.distribute_perspective(pixels)
+        pixels = np.array(pixels)
+        pixels = cv2.normalize(pixels, None, 0, len(pixels))
+        return pixels
+
+    def distribute_surface(self, pixels) -> list:
+        """
+        distribute pixels, assuming middle of pixels are closer to camera
         to lowest value.
         """
         return_map = []
         multipliers = np.linspace(0, 2, len(pixels))
-        for idx, (pixel, multiplier) in enumerate(zip(pixels, multipliers)):
-            return_map.append(idx-(pixel*multiplier))
+        for pixel_id, (pixel, multiplier) in enumerate(zip(pixels, multipliers)):
+            return_map.append(pixel_id*(pixel*multiplier))
+        return return_map
+
+    def distribute_perspective(self, pixels) -> list:
+        """
+        Distribute perspective when assuming one end of
+        pixel row is closer to camera.
+        """
+        return_map = []
+        for pixel_id, (pixel_value,
+                       pixel_multiplier) in enumerate(zip(
+                           pixels, np.linspace(0, len(pixels)))):
+            return_map.append(pixel_id*(pixel_value*pixel_multiplier))
         return return_map
 
     def distribute(self, pixels):
@@ -221,8 +252,6 @@ class DepthCorrection:
             # distance to mid/where original has valley and height/y value relationship?
             # TRY:
             # middle = 1*(225//2), sides=use 0.0-1 and 1-2 and depth mask value 
-            for n in range(1, len(group['pixel_ids'])+1):
-            # placement*value
             for n in range(len(group['pixel_ids'])):
                 len
                 return_map.append(round((used_ids+(to_add*n))))
