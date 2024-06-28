@@ -7,7 +7,7 @@ run this once or a few times? when?
 """
 import numpy as np
 import cv2
-import heapq
+from statistics import mean
 from transformers import pipeline
 from PIL import Image
 import csv
@@ -77,14 +77,22 @@ class DepthCorrection:
 
         cv2.imwrite('d_msk.png', depth_mask)
         height, width = depth_mask.shape
+        blr_h = height
+        blr_w = width
+        if blr_h % 2 == 0:
+            blr_h += 1
+        if blr_w % 2 == 0:
+            blr_w += 1
 
         depth_mask = cv2.medianBlur(depth_mask, 55)
         cv2.imwrite('d_msk_blr.png', depth_mask)
-        map_a = np.array([self.get_map_row(depth_mask[y])
+        depth_mask_long = cv2.GaussianBlur(depth_mask, (blr_h, blr_w), 100)
+        map_a = np.array([self.get_map_row(depth_mask_long[y])
                           for y in range(height)]).astype(np.float32)
 
+        depth_mask_lat = cv2.GaussianBlur(depth_mask, (blr_w, blr_h), 100)
         map_b = np.transpose(np.array([
-            self.get_map_row([w_vals[x] for w_vals in depth_mask])
+            self.get_map_row([w_vals[x] for w_vals in depth_mask_lat])
             for x in range(width)
             ]), (1, 0, 2)).astype(np.float32)
 
@@ -92,12 +100,6 @@ class DepthCorrection:
         map_b = cv2.normalize(map_b, None, 0, 255, cv2.NORM_MINMAX)  # remove
         #map_a = cv2.medianBlur(map_a, 35)
         #map_b = cv2.medianBlur(map_b, 35)
-        blr_h = height
-        blr_w = width
-        if blr_h % 2 == 0:
-            blr_h -= 1
-        if blr_w % 2 == 0:
-            blr_w -= 1
         map_a = cv2.GaussianBlur(map_a, (5, blr_h), 100)
         map_b = cv2.GaussianBlur(map_b, (blr_w, 5), 100)
         #map_a = cv2.bilateralFilter(map_a, 9, 75, 75)
@@ -197,12 +199,18 @@ class DepthCorrection:
         Distribute perspective when assuming one end of
         pixel row is closer to camera.
         """
-        return_map = []
+        return_map = [0]
         for pixel_id, (pixel_value,
                        pixel_multiplier) in enumerate(zip(
-                           pixels, np.linspace(-1, 1, len(pixels)))):
-            return_map.append(pixel_id-(pixel_value*pixel_multiplier))
-        return return_map
+                           pixels, np.linspace(0, 1, len(pixels)))):
+            if mean(pixels) == 0:
+                pixels[-1] = len(pixels)
+            return_map.append((return_map[-1] +
+                              (pixel_value *
+                               (((max(pixels)-pixel_value) /
+                                 mean(pixels))*100)) *
+                               pixel_multiplier))
+        return return_map[1:]
 
     def distribute(self, pixels):
         """
