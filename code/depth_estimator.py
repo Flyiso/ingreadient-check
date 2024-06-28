@@ -69,6 +69,7 @@ class DepthCorrection:
         depth_mask: GRAYSCALE image
         """
         frame = frame  # bottle_image
+        depth_mask = cv2.equalizeHist(depth_mask)
         depth_mask = cv2.normalize(depth_mask, None, 0, 255, cv2.NORM_MINMAX)
 
         assert depth_mask.shape == frame.shape[:2], '''
@@ -109,8 +110,8 @@ class DepthCorrection:
         map_b = cv2.normalize(map_b, None, 0, height, cv2.NORM_MINMAX)
 
         flattened_image = cv2.remap(frame, map_a, map_b,
-                                    interpolation=cv2.INTER_LANCZOS4,
-                                    borderMode=cv2.BORDER_DEFAULT)
+                                    interpolation=cv2.INTER_LINEAR,
+                                    borderMode=cv2.BORDER_REPLICATE)
         cv2.imwrite('flat_img.png', flattened_image)
         self.frame = flattened_image
 
@@ -180,18 +181,16 @@ class DepthCorrection:
         TODO:
         modify to get more space to high depth value
         """
-        return_map = []
+        return_map = [0]
         #pixels = pixels.tolist()
         multipliers = np.linspace(0, 1, len(pixels))
         for pixel_id, (pixel, multiplier) in enumerate(zip(pixels,
                                                            multipliers)):
-            if pixel == 0:
-                pixel = 255*round(multiplier)
-
-            return_map.append((pixel/255*(round(multiplier)+pixel_id))*((multiplier/pixel_id+1)))
+            return_map.append(return_map[-1]+(pixel_id*pixel))
+            #return_map.append((pixel/len(pixels)*(round(multiplier)+pixel_id))*((multiplier/pixel_id+1)))
             #return_map.append((pixel_id*multiplier)*abs(-round(multiplier)*(255-(255-pixel))))
             #return_map.append(multiplier*multiplier*pixel)
-        return return_map
+        return return_map[1:]
 
     def distribute_perspective(self, pixels) -> list:
         """
