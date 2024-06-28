@@ -21,7 +21,6 @@ class DepthCorrection:
     method just correct by values?
     """
     def __init__(self, frame: np.ndarray) -> None:
-        self.X, self.Y = (False, False)
         frame_bgra = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
         alpha_channel = np.where(
             (frame[:, :, 0] == 0) &
@@ -32,6 +31,7 @@ class DepthCorrection:
         )
         frame_bgra[:, :, 3] = alpha_channel
         cv2.imwrite('masked.png', frame_bgra)
+        print(frame_bgra.shape)
         frame = Image.fromarray(frame_bgra)
         pipe = pipeline(task="depth-estimation",
                         model="LiheYoung/depth-anything-large-hf")
@@ -47,14 +47,7 @@ class DepthCorrection:
                             cv2.COLOR_BGRA2GRAY)
         depth = np.where(mask, gray, 255)
         depth = cv2.bitwise_not(depth)
-        min_val = np.min(depth[mask])
-        max_val = np.max(depth[mask])
-        print(min_val, max_val)
-        print(np.mean(depth[mask]))
-        print(np.median(depth[mask]))
-        print('....')
 
-        cv2.imwrite('depth_gs.png', depth)
         self.correct_image(frame=frame_bgra, depth_mask=depth)
 
     def _estimate_depth(self, frame, mask):
@@ -77,27 +70,26 @@ class DepthCorrection:
 
         cv2.imwrite('d_msk.png', depth_mask)
         height, width = depth_mask.shape
-        blr_h = height
-        blr_w = width
+        blr_h = height//5
+        blr_w = width//5
         if blr_h % 2 == 0:
             blr_h += 1
         if blr_w % 2 == 0:
             blr_w += 1
-
-        depth_mask = cv2.medianBlur(depth_mask, 55)
+        #depth_mask = cv2.medianBlur(depth_mask, 55)
         cv2.imwrite('d_msk_blr.png', depth_mask)
-        depth_mask_long = cv2.GaussianBlur(depth_mask, (blr_h, blr_w), 100)
+        depth_mask_long = cv2.GaussianBlur(depth_mask, (5, blr_h), 100)
         map_a = np.array([self.get_map_row(depth_mask_long[y])
                           for y in range(height)]).astype(np.float32)
 
-        depth_mask_lat = cv2.GaussianBlur(depth_mask, (blr_w, blr_h), 100)
+        depth_mask_lat = cv2.GaussianBlur(depth_mask, (blr_w, 5), 100)
         map_b = np.transpose(np.array([
             self.get_map_row([w_vals[x] for w_vals in depth_mask_lat])
             for x in range(width)
             ]), (1, 0, 2)).astype(np.float32)
 
-        map_a = cv2.normalize(map_a, None, 0, 255, cv2.NORM_MINMAX)  # remove
-        map_b = cv2.normalize(map_b, None, 0, 255, cv2.NORM_MINMAX)  # remove
+        #map_a = cv2.normalize(map_a, None, 0, 255, cv2.NORM_MINMAX)  # remove
+        #map_b = cv2.normalize(map_b, None, 0, 255, cv2.NORM_MINMAX)  # remove
         #map_a = cv2.medianBlur(map_a, 35)
         #map_b = cv2.medianBlur(map_b, 35)
         map_a = cv2.GaussianBlur(map_a, (5, blr_h), 100)
@@ -106,10 +98,14 @@ class DepthCorrection:
         #map_b = cv2.bilateralFilter(map_b, 9, 75, 75)
         #map_a = cv2.bitwise_xor(map_a)
         #map_b = cv2.bitwise_xor(map_b)
-        #cv2.imwrite('map_a.png', map_a)
-        #cv2.imwrite('map_b.png', map_b)
-        map_a = cv2.normalize(map_a, None, 0, width, cv2.NORM_MINMAX)
-        map_b = cv2.normalize(map_b, None, 0, height, cv2.NORM_MINMAX)
+        cv2.imwrite('map_a.png', map_a)
+        cv2.imwrite('map_b.png', map_b)
+        cv2.normalize(map_a, map_a, 0, width+1, cv2.NORM_MINMAX)
+        cv2.normalize(map_b, map_b, 0, height+1, cv2.NORM_MINMAX)
+        print('shapes:')
+        print(map_a.shape)
+        print(map_b.shape)
+        print(frame.shape)
 
         flattened_image = cv2.remap(frame, map_a, map_b,
                                     interpolation=cv2.INTER_LINEAR,
@@ -123,7 +119,6 @@ class DepthCorrection:
         """
         map_row = self.distribute_pixels(pixel_row)
         if len(map_row) == len(pixel_row):
-            print(f'{len(map_row)}/{len(pixel_row)}--OK!')
             return map_row
         else:
             print(pixel_row)
@@ -135,45 +130,23 @@ class DepthCorrection:
         figures out what method to use to distribute and uses it.
         """
 
-        print(pixels)
         non_zero = [n for n in pixels if n > 0]
         pixels = cv2.normalize(np.array(pixels), None, 0, 255, cv2.NORM_MINMAX)
         pixels = [int(pixel) for pixel in pixels]
-        print(pixels)
+
         if sum(non_zero[len(non_zero)//3:
                         (len(non_zero)//3)*2]
                ) < sum(non_zero[:len(non_zero)//3]) and\
             sum(non_zero[len(non_zero)//3:
                          (len(non_zero)//3)*2]
                 ) < sum(non_zero[(len(non_zero)//3)*2:]):
-            self.X = pixels  # Remove when plotting/test is done
             pixels = self.distribute_surface(pixels)
-            self.X_NEW = pixels  # Remove when plotting/test is done
 
         else:
-            self.Y = pixels  # Remove when plotting/test is done
             pixels = self.distribute_perspective(pixels)
-            self.Y_NEW = pixels  # Remove when plotting/test is done
+
         pixels = np.array(pixels)
         pixels = cv2.normalize(pixels, None, 0, len(pixels), cv2.NORM_MINMAX)
-        pixels = np.sort(pixels)
-
-        # Temporary code to get csv_file for comparing methods.
-        if isinstance(self.X, dict) and isinstance(self.Y, dict):
-            val_dict = {'X': list(self.X), 'X_new': list(self.X_NEW),
-                        'Y': list(self.Y), 'Y_NEW': list(self.Y_NEW)}
-            self.Y_NEW = cv2.normalize(self.Y_NEW, None, 0, 255,
-                                       cv2.NORM_MINMAX)
-            self.X_NEW = cv2.normalize(self.X_NEW, None, 0, 255,
-                                       cv2.NORM_MINMAX)
-            with open('numbers.csv', 'w') as csvfile:
-                writer = csv.DictWriter(csvfile,
-                                        fieldnames=['X', 'X_NEW',
-                                                    'Y', 'Y_NEW'])
-                writer.writeheader()
-                writer.writerows(val_dict)
-            input('end...?')
-        # End of temporary block.
         return pixels
 
     def distribute_surface(self, pixels) -> list:
@@ -184,14 +157,12 @@ class DepthCorrection:
         modify to get more space to high depth value
         """
         return_map = [0]
-        #pixels = pixels.tolist()
-        multipliers = np.linspace(0, 1, len(pixels))
-        for pixel_id, (pixel, multiplier) in enumerate(zip(pixels,
-                                                           multipliers)):
-            return_map.append(return_map[-1]+(pixel_id*pixel))
-            #return_map.append((pixel/len(pixels)*(round(multiplier)+pixel_id))*((multiplier/pixel_id+1)))
-            #return_map.append((pixel_id*multiplier)*abs(-round(multiplier)*(255-(255-pixel))))
-            #return_map.append(multiplier*multiplier*pixel)
+
+        for pixel, percentile in zip(pixels,
+                                     np.linspace(-1, 1, len(pixels))):
+            return_map.append(return_map[-1]+((((pixel/len(pixels))*10) *
+                                              ((pixel/len(pixels))*10)) *
+                                              ((abs(percentile)*10)*pixel)))
         return return_map[1:]
 
     def distribute_perspective(self, pixels) -> list:
@@ -200,16 +171,14 @@ class DepthCorrection:
         pixel row is closer to camera.
         """
         return_map = [0]
-        for pixel_id, (pixel_value,
-                       pixel_multiplier) in enumerate(zip(
-                           pixels, np.linspace(0, 1, len(pixels)))):
+        for pixel_value, percentile in zip(
+                           pixels, np.linspace(0, 1, len(pixels))):
             if mean(pixels) == 0:
                 pixels[-1] = len(pixels)
-            return_map.append((return_map[-1] +
-                              (pixel_value *
-                               (((max(pixels)-pixel_value) /
-                                 mean(pixels))*100)) *
-                               pixel_multiplier))
+            return_map.append(((return_map[-1] +
+                              (((pixel_value/len(pixels))*10) *
+                               ((pixel_value/len(pixels))*10)) *
+                              ((abs(percentile)*10)*pixel_value))/len(pixels)))
         return return_map[1:]
 
     def distribute(self, pixels):

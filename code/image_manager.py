@@ -32,8 +32,8 @@ class ManageFrames:
         self.dino_model = Model(
             f'{dino_dir}config/GroundingDINO_SwinT_OGC.py',
             f'{dino_dir}weights/groundingdino_swint_ogc.pth')
-        self.classes = ['Label without the container it is on']  # ['text or image']
-        self.box_threshold = 0.40  # 0.35
+        self.classes = ['Text or image']  # ['text or image']
+        self.box_threshold = 0.55  # 0.35
         self.text_threshold = 0.25
         self.sam_model = sam_model_registry[sam_encoder_version](
             checkpoint=sam_checkpoint_path).to(device=device)
@@ -71,8 +71,6 @@ class ManageFrames:
                                                         cv2.COLOR_GRAY2RGB),
                                            binary_mask)
             img_to_depth = img_to_depth[y:y+h, x:x+w]
-            cv2.imwrite('d-img.png', img_to_depth)
-            input('Check img if ok.')
 
             de = DepthCorrection(img_to_depth)
             img = de.frame
