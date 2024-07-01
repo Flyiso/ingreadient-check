@@ -33,7 +33,7 @@ class ManageFrames:
             f'{dino_dir}config/GroundingDINO_SwinT_OGC.py',
             f'{dino_dir}weights/groundingdino_swint_ogc.pth')
         self.classes = ['Text or image']  # ['text or image']
-        self.box_threshold = 0.55  # 0.35
+        self.box_threshold = 0.25  # 0.35
         self.text_threshold = 0.25
         self.sam_model = sam_model_registry[sam_encoder_version](
             checkpoint=sam_checkpoint_path).to(device=device)

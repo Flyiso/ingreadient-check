@@ -82,7 +82,7 @@ class DepthCorrection:
         map_a = np.array([self.get_map_row(depth_mask_long[y])
                           for y in range(height)]).astype(np.float32)
 
-        depth_mask_lat = cv2.GaussianBlur(depth_mask, (blr_w, 5), 100)
+        depth_mask_lat = cv2.GaussianBlur(depth_mask, (blr_w, 5), 200)
         map_b = np.transpose(np.array([
             self.get_map_row([w_vals[x] for w_vals in depth_mask_lat])
             for x in range(width)
@@ -162,7 +162,7 @@ class DepthCorrection:
                                      np.linspace(-1, 1, len(pixels))):
             return_map.append(return_map[-1]+((((pixel/len(pixels))*10) *
                                               ((pixel/len(pixels))*10)) *
-                                              ((abs(percentile)*10)*pixel)))
+                                              ((abs(percentile)*10)**3)))
         return return_map[1:]
 
     def distribute_perspective(self, pixels) -> list:
@@ -172,13 +172,13 @@ class DepthCorrection:
         """
         return_map = [0]
         for pixel_value, percentile in zip(
-                           pixels, np.linspace(0, 1, len(pixels))):
+                           pixels, np.linspace(1, 2, len(pixels))):
             if mean(pixels) == 0:
                 pixels[-1] = len(pixels)
-            return_map.append(((return_map[-1] +
-                              (((pixel_value/len(pixels))*10) *
-                               ((pixel_value/len(pixels))*10)) *
-                              ((abs(percentile)*10)*pixel_value))/len(pixels)))
+            #return_map.append(return_map[-1] +
+            #                  (len(return_map)*pixel_value)**percentile)
+            return_map.append(len(return_map))
+        return_map = sorted(return_map)
         return return_map[1:]
 
     def distribute(self, pixels):
