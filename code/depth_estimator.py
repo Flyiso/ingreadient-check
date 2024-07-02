@@ -83,7 +83,7 @@ class DepthCorrection:
                           for y in range(height)]).astype(np.float32)
 
         # test map reverse.
-        reversed_map = np.zeros_like(map_a)
+        """reversed_map = np.zeros_like(map_a)
         for y in range(height):
             for x in range(width):
                 # Get the value at the current pixel
@@ -91,7 +91,7 @@ class DepthCorrection:
                 # Ensure the value is within the bounds of the map
                 if 0 <= value < 256:
                     reversed_map[x, int(value)] = y
-        map_a = reversed_map
+        map_a = reversed_map"""
         # end of test solution
 
         depth_mask_lat = cv2.GaussianBlur(depth_mask, (blr_w, 5), 200)
@@ -175,12 +175,20 @@ class DepthCorrection:
         This does the opposite of what wanted?
         """
         return_map = [0]
+        # currently each pixel has 1 space
+        pixels.mean()  # mean of pixels- one?
+        pixels.min()   # give those no space?
+        pixels.max()   # Give as much space as possible?
+                       # pixel - mean = space modifier? 
+                       # Do in 2 steps? one to get each pixel+mod
+                       # and one to do the map?  
 
         for pixel, percentile in zip(pixels,
                                      np.linspace(-1, 1, len(pixels))):
-            return_map.append(return_map[-1]+((((pixel/len(pixels))*10) *
+            """return_map.append(return_map[-1]+((((pixel/len(pixels))*10) *
                                               ((pixel/len(pixels))*10)) *
-                                              ((abs(percentile)*10)**3)))
+                                              ((abs(percentile)*10)**3)))"""
+            return_map.append(len(return_map)+(percentile*pixel))
         return return_map[1:]
 
     def distribute_perspective(self, pixels) -> list:
