@@ -79,12 +79,12 @@ class DepthCorrection:
         #depth_mask = cv2.medianBlur(depth_mask, 55)
         cv2.imwrite('d_msk_blr.png', depth_mask)
         depth_mask_long = cv2.GaussianBlur(depth_mask, (5, blr_h), 100)
-        map_a = np.array([self.get_map_row(depth_mask_long[y])
+        map_a = np.array([self.get_map_row(depth_mask_long[y], 'lat')
                           for y in range(height)]).astype(np.float32)
 
         depth_mask_lat = cv2.GaussianBlur(depth_mask, (blr_w, 5), 200)
         map_b = np.transpose(np.array([
-            self.get_map_row([w_vals[x] for w_vals in depth_mask_lat])
+            self.get_map_row([w_vals[x] for w_vals in depth_mask_lat], 'long')
             for x in range(width)
             ]), (1, 0, 2)).astype(np.float32)
 
@@ -113,28 +113,33 @@ class DepthCorrection:
         cv2.imwrite('flat_img.png', flattened_image)
         self.frame = flattened_image
 
-    def get_map_row(self, pixel_row):
+    def get_map_row(self, pixel_row, direction: str):
         """
         uses self.distribute to get values for map.
         """
-        map_row = self.distribute_pixels(pixel_row)
+        map_row = self.distribute_pixels(pixel_row, direction)
         if len(map_row) == len(pixel_row):
             return map_row
         else:
             print(pixel_row)
             print(map_row)
 
-    def distribute_pixels(self, pixels) -> np.ndarray:
+    def distribute_pixels(self, pixels, direction) -> np.ndarray:
         """
         returns the pixels with their new placement.
         figures out what method to use to distribute and uses it.
         """
-
-        non_zero = [n for n in pixels if n > 0]
+        # calls wrong method sometimes?
+        # send full img instead and transpose it?
         pixels = cv2.normalize(np.array(pixels), None, 0, 255, cv2.NORM_MINMAX)
+        if direction == 'lat':
+            pixels = self.distribute_surface(pixels)
+        if direction == 'long':
+            pixels = self.distribute_perspective(pixels)
+        """
+        non_zero = [n for n in pixels if n > 0]
         pixels = [int(pixel) for pixel in pixels]
-
-        if sum(non_zero[len(non_zero)//3:
+            if sum(non_zero[len(non_zero)//3:
                         (len(non_zero)//3)*2]
                ) < sum(non_zero[:len(non_zero)//3]) and\
             sum(non_zero[len(non_zero)//3:
@@ -143,7 +148,7 @@ class DepthCorrection:
             pixels = self.distribute_surface(pixels)
 
         else:
-            pixels = self.distribute_perspective(pixels)
+            pixels = self.distribute_perspective(pixels)"""
 
         pixels = np.array(pixels)
         pixels = cv2.normalize(pixels, None, 0, len(pixels), cv2.NORM_MINMAX)
@@ -155,6 +160,7 @@ class DepthCorrection:
         to lowest value.
         TODO:
         modify to get more space to high depth value
+        This does the opposite of what wanted?
         """
         return_map = [0]
 
@@ -173,8 +179,8 @@ class DepthCorrection:
         return_map = [0]
         for pixel_value, percentile in zip(
                            pixels, np.linspace(1, 2, len(pixels))):
-            if mean(pixels) == 0:
-                pixels[-1] = len(pixels)
+            #if mean(pixels) == 0:
+            #    pixels[-1] = len(pixels)
             #return_map.append(return_map[-1] +
             #                  (len(return_map)*pixel_value)**percentile)
             return_map.append(len(return_map))
