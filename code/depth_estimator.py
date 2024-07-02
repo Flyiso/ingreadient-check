@@ -82,6 +82,18 @@ class DepthCorrection:
         map_a = np.array([self.get_map_row(depth_mask_long[y], 'lat')
                           for y in range(height)]).astype(np.float32)
 
+        # test map reverse.
+        reversed_map = np.zeros_like(map_a)
+        for y in range(height):
+            for x in range(width):
+                # Get the value at the current pixel
+                value = map_a[y, x]
+                # Ensure the value is within the bounds of the map
+                if 0 <= value < 256:
+                    reversed_map[x, int(value)] = y
+        map_a = reversed_map
+        # end of test solution
+
         depth_mask_lat = cv2.GaussianBlur(depth_mask, (blr_w, 5), 200)
         map_b = np.transpose(np.array([
             self.get_map_row([w_vals[x] for w_vals in depth_mask_lat], 'long')
@@ -92,16 +104,16 @@ class DepthCorrection:
         #map_b = cv2.normalize(map_b, None, 0, 255, cv2.NORM_MINMAX)  # remove
         #map_a = cv2.medianBlur(map_a, 35)
         #map_b = cv2.medianBlur(map_b, 35)
-        map_a = cv2.GaussianBlur(map_a, (5, blr_h), 100)
-        map_b = cv2.GaussianBlur(map_b, (blr_w, 5), 100)
+        #map_a = cv2.GaussianBlur(map_a, (5, blr_h), 100)
+        #map_b = cv2.GaussianBlur(map_b, (blr_w, 5), 100)
         #map_a = cv2.bilateralFilter(map_a, 9, 75, 75)
         #map_b = cv2.bilateralFilter(map_b, 9, 75, 75)
         #map_a = cv2.bitwise_xor(map_a)
         #map_b = cv2.bitwise_xor(map_b)
         cv2.imwrite('map_a.png', map_a)
         cv2.imwrite('map_b.png', map_b)
-        cv2.normalize(map_a, map_a, 0, width+1, cv2.NORM_MINMAX)
-        cv2.normalize(map_b, map_b, 0, height+1, cv2.NORM_MINMAX)
+        map_a = cv2.normalize(map_a, None, 0, width+1, cv2.NORM_MINMAX)
+        map_b = cv2.normalize(map_b, None, 0, height+1, cv2.NORM_MINMAX)
         print('shapes:')
         print(map_a.shape)
         print(map_b.shape)
