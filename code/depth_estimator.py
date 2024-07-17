@@ -174,6 +174,8 @@ class DepthCorrection:
         modify to get more space to high depth value
         This does the opposite of what wanted?
         """
+        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 100]
+        return np.linspace(min(roi), max(roi), len(pixels))
         return_map = [0]
         # currently each pixel has 1 space
         pixels.mean()  # mean of pixels- one?
@@ -196,10 +198,12 @@ class DepthCorrection:
         Distribute perspective when assuming one end of
         pixel row is closer to camera.
         """
+        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 100]
+        return np.linspace(min(roi), max(roi), len(pixels))
         return_map = [0]
         for pixel_value, percentile in zip(
-                           pixels, np.linspace(1, 2, len(pixels))):
-            return_map.append(return_map[-1]+len(return_map)**pixel_value)
+                           pixels, np.linspace(0, len(pixels), len(pixels))):
+            return_map.append(len(return_map)+percentile**pixel_value)
         return sorted(return_map[1:])
 
     def distribute(self, pixels):
