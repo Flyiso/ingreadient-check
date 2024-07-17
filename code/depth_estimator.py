@@ -114,15 +114,17 @@ class DepthCorrection:
         #map_b = cv2.bitwise_xor(map_b)
         cv2.imwrite('map_a.png', map_a)
         cv2.imwrite('map_b.png', map_b)
-        map_a = cv2.normalize(map_a, None, 0, width+1, cv2.NORM_MINMAX)
-        map_b = cv2.normalize(map_b, None, 0, height+1, cv2.NORM_MINMAX)
+        #map_a = cv2.normalize(map_a, None, 0, width+1, cv2.NORM_MINMAX)
+        #map_b = cv2.normalize(map_b, None, 0, height+1, cv2.NORM_MINMAX)
         print('shapes:')
         print(map_a.shape)
         print(map_b.shape)
         print(frame.shape)
+        #M = cv2.getPerspectiveTransform(map_a, map_b)
+        #flattened_image = cv2.warpPerspective(frame, M, frame.shape[:2])
 
         flattened_image = cv2.remap(frame, map_a, map_b,
-                                    interpolation=cv2.INTER_LINEAR,
+                                    interpolation=cv2.INTER_CUBIC,
                                     borderMode=cv2.BORDER_REPLICATE)
         cv2.imwrite('flat_img.png', flattened_image)
         self.frame = flattened_image
@@ -165,7 +167,7 @@ class DepthCorrection:
             pixels = self.distribute_perspective(pixels)"""
 
         pixels = np.array(pixels)
-        pixels = cv2.normalize(pixels, None, 0, len(pixels), cv2.NORM_MINMAX)
+        pixels = cv2.normalize(pixels, None, min(pixels), max(pixels), cv2.NORM_MINMAX)
         return pixels
 
     def distribute_surface(self, pixels) -> list:
