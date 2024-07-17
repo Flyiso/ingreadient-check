@@ -78,7 +78,8 @@ class DepthCorrection:
             blr_w += 1
         #depth_mask = cv2.medianBlur(depth_mask, 55)
         cv2.imwrite('d_msk_blr.png', depth_mask)
-        depth_mask_long = cv2.GaussianBlur(depth_mask, (5, blr_h), 100)
+        #depth_mask_long = cv2.GaussianBlur(depth_mask, (5, blr_h), 100)
+        depth_mask_long = depth_mask
         map_a = np.array([self.get_map_row(depth_mask_long[y], 'lat')
                           for y in range(height)]).astype(np.float32)
 
@@ -94,7 +95,8 @@ class DepthCorrection:
         map_a = reversed_map"""
         # end of test solution
 
-        depth_mask_lat = cv2.GaussianBlur(depth_mask, (blr_w, 5), 200)
+        #depth_mask_lat = cv2.GaussianBlur(depth_mask, (blr_w, 5), 200)
+        depth_mask_lat = depth_mask
         map_b = np.transpose(np.array([
             self.get_map_row([w_vals[x] for w_vals in depth_mask_lat], 'long')
             for x in range(width)
@@ -174,7 +176,7 @@ class DepthCorrection:
         modify to get more space to high depth value
         This does the opposite of what wanted?
         """
-        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 100]
+        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 200]
         return np.linspace(min(roi), max(roi), len(pixels))
         return_map = [0]
         # currently each pixel has 1 space
@@ -198,7 +200,9 @@ class DepthCorrection:
         Distribute perspective when assuming one end of
         pixel row is closer to camera.
         """
-        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 100]
+        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 200]
+        print(max(roi), min(roi), len(roi))
+
         return np.linspace(min(roi), max(roi), len(pixels))
         return_map = [0]
         for pixel_value, percentile in zip(
