@@ -199,13 +199,8 @@ class DepthCorrection:
         return_map = [0]
         for pixel_value, percentile in zip(
                            pixels, np.linspace(1, 2, len(pixels))):
-            #if mean(pixels) == 0:
-            #    pixels[-1] = len(pixels)
-            #return_map.append(return_map[-1] +
-            #                  (len(return_map)*pixel_value)**percentile)
-            return_map.append(len(return_map))
-        return_map = sorted(return_map)
-        return return_map[1:]
+            return_map.append(return_map[-1]+len(return_map)**pixel_value)
+        return sorted(return_map[1:])
 
     def distribute(self, pixels):
         """
