@@ -90,8 +90,8 @@ class DepthCorrection:
         cv2.imwrite('map_b.png', map_b)
 
         flattened_image = cv2.remap(frame, map_a, map_b,
-                                    interpolation=cv2.INTER_CUBIC,
-                                    borderMode=cv2.BORDER_REPLICATE)
+                                    interpolation=cv2.INTER_NEAREST,
+                                    borderMode=cv2.BORDER_WRAP)
         cv2.imwrite('flat_img.png', flattened_image)
         self.frame = flattened_image
 
@@ -111,27 +111,10 @@ class DepthCorrection:
         returns the pixels with their new placement.
         figures out what method to use to distribute and uses it.
         """
-        # calls wrong method sometimes?
-        # send full img instead and transpose it?
-        pixels = cv2.normalize(np.array(pixels), None, 0, 255, cv2.NORM_MINMAX)
         if direction == 'lat':
             pixels = self.distribute_surface(pixels)
         if direction == 'long':
             pixels = self.distribute_perspective(pixels)
-        """
-        non_zero = [n for n in pixels if n > 0]
-        pixels = [int(pixel) for pixel in pixels]
-            if sum(non_zero[len(non_zero)//3:
-                        (len(non_zero)//3)*2]
-               ) < sum(non_zero[:len(non_zero)//3]) and\
-            sum(non_zero[len(non_zero)//3:
-                         (len(non_zero)//3)*2]
-                ) < sum(non_zero[(len(non_zero)//3)*2:]):
-            pixels = self.distribute_surface(pixels)
-
-        else:
-            pixels = self.distribute_perspective(pixels)"""
-
         pixels = np.array(pixels)
         pixels = cv2.normalize(pixels, None, min(pixels),
                                max(pixels), cv2.NORM_MINMAX)
@@ -145,7 +128,7 @@ class DepthCorrection:
         modify to get more space to high depth value
         This does the opposite of what wanted?
         """
-        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 1]
+        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix > 1]
         return np.linspace(min(roi), max(roi), len(pixels))
 
     def distribute_perspective(self, pixels) -> list:
@@ -153,7 +136,7 @@ class DepthCorrection:
         Distribute perspective when assuming one end of
         pixel row is closer to camera.
         """
-        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 1]
+        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix > 1]
         print(max(roi), min(roi), len(roi))
 
         return np.linspace(min(roi), max(roi), len(pixels))
