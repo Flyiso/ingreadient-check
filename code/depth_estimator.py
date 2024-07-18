@@ -178,7 +178,7 @@ class DepthCorrection:
         modify to get more space to high depth value
         This does the opposite of what wanted?
         """
-        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 20]
+        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 5]
         return np.linspace(min(roi), max(roi), len(pixels))
         return_map = [0]
         # currently each pixel has 1 space
@@ -202,7 +202,7 @@ class DepthCorrection:
         Distribute perspective when assuming one end of
         pixel row is closer to camera.
         """
-        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 20]
+        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 5]
         print(max(roi), min(roi), len(roi))
 
         return np.linspace(min(roi), max(roi), len(pixels))

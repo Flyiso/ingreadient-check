@@ -4,6 +4,8 @@ The application compares the ingredients found, and compares it
 to the dietary restrictions the user has.
 
 1) record labels to make application usable on containers with label wrapped around.
+
+TODO: Depth estimator neccessary? 
 TODO: test to crop as large as possible rectangular image from by-text-rotated image
  
 TODO: Test label_video_reader with more videos and images to modify and make application
@@ -15,24 +17,12 @@ TODO: control of distance between images in each merge?.
 TODO: Try to use panorama mode for stitcher every x
       merge(with high thresh?) to avoid loosing first img section
 
-TODO: Instead of trying the next image when merge fails, try to
-      merge add and instead merge more than 2 frames at a time
-      (and put limit to max n of frames in each merge?)
-      -seems to work better.
-      TODO?: first sections of merged result disappear later on.
-             use mask to avoid? or solve in any other way?
 TODO: try panorama mode when scans not working?
 TODO: try to also warp img before merge- 
       take both images into consideration and adjust accordingly?
 
 TODO: make it runable on mobile devices.
       (less pytesseract? more efficient ways to find text region? image segmentation? huggingface?)
-
-TODO: enhance images before merge?
-  DONE: lightness.
-  TODO?: blur? bilateral?
-  TODO?: enhance/increase contrast of letters
-TODO: get mask to cover possible shiny areas of image before merge?
 
 TODO: error when no contour found- create early escape/error management(check DINO)
 
