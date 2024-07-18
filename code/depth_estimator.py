@@ -7,7 +7,6 @@ run this once or a few times? when?
 """
 import numpy as np
 import cv2
-from statistics import mean
 from transformers import pipeline
 from PIL import Image
 import csv
@@ -76,52 +75,19 @@ class DepthCorrection:
             blr_h += 1
         if blr_w % 2 == 0:
             blr_w += 1
-        #depth_mask = cv2.medianBlur(depth_mask, 55)
         cv2.imwrite('d_msk_blr.png', depth_mask)
         depth_mask_long = cv2.GaussianBlur(depth_mask, (5, blr_h), 100)
-        #depth_mask_long = depth_mask
         map_a = np.array([self.get_map_row(depth_mask_long[y], 'lat')
                           for y in range(height)]).astype(np.float32)
 
-        # test map reverse.
-        """reversed_map = np.zeros_like(map_a)
-        for y in range(height):
-            for x in range(width):
-                # Get the value at the current pixel
-                value = map_a[y, x]
-                # Ensure the value is within the bounds of the map
-                if 0 <= value < 256:
-                    reversed_map[x, int(value)] = y
-        map_a = reversed_map"""
-        # end of test solution
-
         depth_mask_lat = cv2.GaussianBlur(depth_mask, (blr_w, 5), 200)
-        #depth_mask_lat = depth_mask
         map_b = np.transpose(np.array([
             self.get_map_row([w_vals[x] for w_vals in depth_mask_lat], 'long')
             for x in range(width)
             ]), (1, 0, 2)).astype(np.float32)
 
-        #map_a = cv2.normalize(map_a, None, 0, 255, cv2.NORM_MINMAX)  # remove
-        #map_b = cv2.normalize(map_b, None, 0, 255, cv2.NORM_MINMAX)  # remove
-        #map_a = cv2.medianBlur(map_a, 35)
-        #map_b = cv2.medianBlur(map_b, 35)
-        #map_a = cv2.GaussianBlur(map_a, (5, blr_h), 100)
-        #map_b = cv2.GaussianBlur(map_b, (blr_w, 5), 100)
-        #map_a = cv2.bilateralFilter(map_a, 9, 75, 75)
-        #map_b = cv2.bilateralFilter(map_b, 9, 75, 75)
-        #map_a = cv2.bitwise_xor(map_a)
-        #map_b = cv2.bitwise_xor(map_b)
         cv2.imwrite('map_a.png', map_a)
         cv2.imwrite('map_b.png', map_b)
-        #map_a = cv2.normalize(map_a, None, 0, width+1, cv2.NORM_MINMAX)
-        #map_b = cv2.normalize(map_b, None, 0, height+1, cv2.NORM_MINMAX)
-        print('shapes:')
-        print(map_a.shape)
-        print(map_b.shape)
-        print(frame.shape)
-        #M = cv2.getPerspectiveTransform(map_a, map_b)
-        #flattened_image = cv2.warpPerspective(frame, M, frame.shape[:2])
 
         flattened_image = cv2.remap(frame, map_a, map_b,
                                     interpolation=cv2.INTER_CUBIC,
@@ -167,7 +133,8 @@ class DepthCorrection:
             pixels = self.distribute_perspective(pixels)"""
 
         pixels = np.array(pixels)
-        pixels = cv2.normalize(pixels, None, min(pixels), max(pixels), cv2.NORM_MINMAX)
+        pixels = cv2.normalize(pixels, None, min(pixels),
+                               max(pixels), cv2.NORM_MINMAX)
         return pixels
 
     def distribute_surface(self, pixels) -> list:
@@ -178,39 +145,18 @@ class DepthCorrection:
         modify to get more space to high depth value
         This does the opposite of what wanted?
         """
-        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 5]
+        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 1]
         return np.linspace(min(roi), max(roi), len(pixels))
-        return_map = [0]
-        # currently each pixel has 1 space
-        pixels.mean()  # mean of pixels- one?
-        pixels.min()   # give those no space?
-        pixels.max()   # Give as much space as possible?
-                       # pixel - mean = space modifier? 
-                       # Do in 2 steps? one to get each pixel+mod
-                       # and one to do the map?  
-
-        for pixel, percentile in zip(pixels,
-                                     np.linspace(-1, 1, len(pixels))):
-            """return_map.append(return_map[-1]+((((pixel/len(pixels))*10) *
-                                              ((pixel/len(pixels))*10)) *
-                                              ((abs(percentile)*10)**3)))"""
-            return_map.append(len(return_map)+(percentile*pixel))
-        return return_map[1:]
 
     def distribute_perspective(self, pixels) -> list:
         """
         Distribute perspective when assuming one end of
         pixel row is closer to camera.
         """
-        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 5]
+        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix >= 1]
         print(max(roi), min(roi), len(roi))
 
         return np.linspace(min(roi), max(roi), len(pixels))
-        return_map = [0]
-        for pixel_value, percentile in zip(
-                           pixels, np.linspace(0, len(pixels), len(pixels))):
-            return_map.append(len(return_map)+percentile**pixel_value)
-        return sorted(return_map[1:])
 
     def distribute(self, pixels):
         """
