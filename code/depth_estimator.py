@@ -52,7 +52,7 @@ class DepthCorrection:
     def _estimate_depth(self, frame, mask):
         pass
 
-    def flatten_label_by_contours(self):
+    def flatten_label_by_contours(self, depth_map, edges):
         """
         use contours to get area of label.
         """
@@ -65,9 +65,18 @@ class DepthCorrection:
 
         # PLAN:
         # get min and max for each 'row'(or column)
-        # do some kind of normalization(visual note- second grade equation and straight)
+        # do some kind of normalization(visual note- second grade equation and straight or normal distrobution)
         # do np.linspace for those.
         # find way to give different 'depth' weight in creation of final array.
+        #   for value in range(start,stop:)
+        #   add depth value.
+        #   sum(depth_values)//len(depth_values)=mean
+        #   
+        # return arrays as map.
+        edge_points = [] # use detected edges to avoid error with middle/closest section of image.
+        for pixel_row in depth_map:
+            roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 1]
+            edge_points.append((max(roi), min(roi)))
         pass
 
     def correct_image(self, frame: np.ndarray,
