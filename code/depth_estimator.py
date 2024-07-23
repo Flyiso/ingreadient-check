@@ -52,7 +52,7 @@ class DepthCorrection:
     def _estimate_depth(self, frame, mask):
         pass
 
-    def flatten_label_by_contours(self, depth_map_gradient, depth_img):
+    def flatten_label_by_contours(self, depth_img):
         """
         use contours to get area of label.
         """
@@ -73,7 +73,7 @@ class DepthCorrection:
         #   sum(depth_values)//len(depth_values)=mean
         #   
         # return arrays as map.
-        edge_points = [] # use detected edges to avoid error with middle/closest section of image.
+        edge_points = []
         for pixel_row in depth_img:
             roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 1]
             edge_points.append((max(roi), min(roi)))
@@ -87,14 +87,14 @@ class DepthCorrection:
         pixel_map = []
         for start, stop in zip(pixels_start, pixels_end):
             pixel_map.append(np.linspace(start, stop, len(depth_img[0])))
-        return pixel_map
+        return np.array(pixel_map)
 
     @staticmethod
     def normalize_values(values):
         values = np.array(values)
 
         mean = np.mean(values)
-        std = np.std(values)
+        std = (np.std(values))
 
         values[values < mean-std] = mean-std
         values[values > mean+std] = mean+std
@@ -109,6 +109,23 @@ class DepthCorrection:
         frame: BGRA image
         depth_mask: GRAYSCALE image
         """
+        # This section is to test new method
+        map_a = cv2.flip(
+            self.flatten_label_by_contours(depth_mask), -1).astype(np.float32)
+        map_b = cv2.flipND(cv2.rotate(self.flatten_label_by_contours(
+            cv2.rotate(depth_mask, cv2.ROTATE_90_CLOCKWISE)),
+            cv2.ROTATE_90_COUNTERCLOCKWISE), 1).astype(np.float32)
+        map_b = cv2.GaussianBlur(map_b, (295, 15), 0)
+        map_a = cv2.GaussianBlur(map_a, (15, 295), 0)
+        cv2.imwrite('map_b.png', map_b)
+        cv2.imwrite('map_a.png', map_a)
+        flattened_image = cv2.remap(frame, map_a, map_b,
+                                    interpolation=cv2.INTER_NEAREST,
+                                    borderMode=cv2.BORDER_WRAP)
+        cv2.imwrite('flat_img.png', flattened_image)
+        self.frame = flattened_image
+        return
+        # Past this is old code.
         frame = frame  # bottle_image
         depth_mask = cv2.equalizeHist(depth_mask)
         depth_mask = cv2.normalize(depth_mask, None, 0, 255, cv2.NORM_MINMAX)
