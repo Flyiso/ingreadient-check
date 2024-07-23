@@ -92,15 +92,14 @@ class DepthCorrection:
             pixel_map.append(np.linspace(start, stop, len(depth_img[0])))
         return np.array(pixel_map)
 
-    @staticmethod
-    def normalize_values(values):
-        values = np.array(values)
-
-        mean = np.mean(values)
+    def normalize_values(self, values):
+        #values = np.array(values)
+        values = self.choose_best_fit(values)
+        """mean = np.mean(values)
         std = np.std(values)*1.25
 
         values[values < mean-std] = mean-std
-        values[values > mean+std] = mean+std
+        values[values > mean+std] = mean+std"""
 
         return values.tolist()
 
@@ -118,6 +117,7 @@ class DepthCorrection:
         map_b = cv2.flipND(cv2.rotate(self.flatten_label_by_contours(
             cv2.rotate(depth_mask, cv2.ROTATE_90_CLOCKWISE)),
             cv2.ROTATE_90_COUNTERCLOCKWISE), 1).astype(np.float32)
+        # TODO: Test to correct each line.
         map_b = cv2.GaussianBlur(map_b, (295, 15), 0)
         map_a = cv2.GaussianBlur(map_a, (15, 295), 0)
         cv2.imwrite('map_b.png', map_b)
@@ -279,6 +279,6 @@ class DepthCorrection:
         rmse_quad = np.sqrt(mean_squared_error(y, y_fit_quad))
 
         if rmse_line < rmse_quad:
-            return y_fit_line.tolist()
+            return y_fit_line
         else:
-            return y_fit_quad.tolist()
+            return y_fit_quad
