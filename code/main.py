@@ -35,7 +35,7 @@ def run_app(filepath, img_dir: str = None,
     if img_dir is not None:
         check_directory(img_dir, frame_interval)
     video = RecordLabel(video_path=filepath,
-                        adjust_h=0.45, adjust_w=0.45,
+                        adjust_h=0.5, adjust_w=0.5,
                         pt_config='oem-- 3 --psm 6',
                         img_dir=img_dir, display_current=False)
     print('GET TEXT...?')

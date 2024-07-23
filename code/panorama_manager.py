@@ -156,7 +156,7 @@ class StitcherSet:
     """
     def __init__(self, try_use_gpu: bool = True,
                  blend_strength: int = 5, block_size: int = 5,
-                 nr_feeds: int = 1, match_conf: float = 0.15,
+                 nr_feeds: int = 1, match_conf: float = 0.4,
                  blender_type: str = 'multiband',
                  compensator: str = 'gain_blocks',
                  detector: str = 'sift',
