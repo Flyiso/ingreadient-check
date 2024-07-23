@@ -50,16 +50,20 @@ class DepthCorrection:
 
         self.correct_image(frame=frame_bgra, depth_mask=depth)
 
-    def flatten_label_by_contours(self, depth_img):
+    def flatten_label_by_contour(self, depth_img):
         """
         use contours to get area of label.
         """
         edge_points = []
         for pixel_row in depth_img:
             roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 1]
-            edge_points.append((max(roi), min(roi)))
+            print(roi)
+            print(len(edge_points))
+            if len(roi) < 1:
+                edge_points.append(edge_points[-1])
+            else:
+                edge_points.append((max(roi), min(roi)))
 
-        # these should be 'normalized' somehow.
         pixels_start = [edge_point[0] for edge_point in edge_points]
         pixels_end = [edge_point[1] for edge_point in edge_points]
         pixels_start = self.normalize_values(pixels_start)
@@ -90,8 +94,8 @@ class DepthCorrection:
         depth_mask: GRAYSCALE image
         """
         map_a = cv2.flip(
-            self.flatten_label_by_contours(depth_mask), 1).astype(np.float32)
-        map_b = cv2.rotate(self.flatten_label_by_contours(
+            self.flatten_label_by_contour(depth_mask), 1).astype(np.float32)
+        map_b = cv2.rotate(self.flatten_label_by_contour(
             cv2.rotate(depth_mask, cv2.ROTATE_90_CLOCKWISE)),
             cv2.ROTATE_90_COUNTERCLOCKWISE).astype(np.float32)
         cv2.imwrite('map_b.png', map_b)
