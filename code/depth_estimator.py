@@ -93,13 +93,13 @@ class DepthCorrection:
         return np.array(pixel_map)
 
     def normalize_values(self, values):
-        #values = np.array(values)
-        values = self.choose_best_fit(values)
-        """mean = np.mean(values)
-        std = np.std(values)*1.25
+        values = np.array(values)
+        mean = np.mean(values)
+        std = np.std(values)
 
         values[values < mean-std] = mean-std
-        values[values > mean+std] = mean+std"""
+        values[values > mean+std] = mean+std
+        values = self.choose_best_fit(values)
 
         return values.tolist()
 
@@ -113,10 +113,10 @@ class DepthCorrection:
         """
         # This section is to test new method
         map_a = cv2.flip(
-            self.flatten_label_by_contours(depth_mask), -1).astype(np.float32)
-        map_b = cv2.flipND(cv2.rotate(self.flatten_label_by_contours(
+            self.flatten_label_by_contours(depth_mask), 1).astype(np.float32)
+        map_b = cv2.rotate(self.flatten_label_by_contours(
             cv2.rotate(depth_mask, cv2.ROTATE_90_CLOCKWISE)),
-            cv2.ROTATE_90_COUNTERCLOCKWISE), 1).astype(np.float32)
+            cv2.ROTATE_90_COUNTERCLOCKWISE).astype(np.float32)
         # TODO: Test to correct each line.
         #map_b = cv2.GaussianBlur(map_b, (295, 15), 0)
         #map_a = cv2.GaussianBlur(map_a, (15, 295), 0)
