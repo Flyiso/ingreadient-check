@@ -10,6 +10,9 @@ import cv2
 from transformers import pipeline
 from PIL import Image
 import csv
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.metrics import mean_squared_error
 
 
 class DepthCorrection:
@@ -94,7 +97,7 @@ class DepthCorrection:
         values = np.array(values)
 
         mean = np.mean(values)
-        std = (np.std(values))
+        std = np.std(values)*1.25
 
         values[values < mean-std] = mean-std
         values[values > mean+std] = mean+std
@@ -243,3 +246,39 @@ class DepthCorrection:
                 d_n['Y3'] = der_v[0]
             writer.writerows(n_dict)
         input('')
+
+    def fit_to_line(self, y):
+        x = np.arange(len(y)).reshape(-1, 1)
+        y = np.array(y)
+
+        model = LinearRegression()
+        model.fit(x, y)
+
+        y_fit = model.predict(x)
+        return y_fit
+
+    def fit_to_quadratic(self, y):
+        x = np.arange(len(y)).reshape(-1, 1)
+        y = np.array(y)
+
+        poly = PolynomialFeatures(degree=2)
+        x_poly = poly.fit_transform(x)
+
+        model = LinearRegression()
+        model.fit(x_poly, y)
+
+        y_fit = model.predict(x_poly)
+        return y_fit
+
+    def choose_best_fit(self, y):
+        y_fit_line = self.fit_to_line(y)
+        y_fit_quad = self.fit_to_quadratic(y)
+
+        # Calculate RMSE for both models
+        rmse_line = np.sqrt(mean_squared_error(y, y_fit_line))
+        rmse_quad = np.sqrt(mean_squared_error(y, y_fit_quad))
+
+        if rmse_line < rmse_quad:
+            return y_fit_line.tolist()
+        else:
+            return y_fit_quad.tolist()

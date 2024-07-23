@@ -6,6 +6,9 @@ import shutil
 from video_manager import RecordLabel
 from text_reader import ReadText  # also move later
 import cv2  # remove later/when text class moved to final location
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.metrics import mean_squared_error
 
 
 def check_directory(img_dir: str, frame_interval: int):
