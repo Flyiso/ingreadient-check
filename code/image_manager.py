@@ -33,7 +33,7 @@ class ManageFrames:
             f'{dino_dir}config/GroundingDINO_SwinT_OGC.py',
             f'{dino_dir}weights/groundingdino_swint_ogc.pth')
         self.classes = ['Text or image']  # ['text or image']
-        self.box_threshold = 0.25  # 0.35
+        self.box_threshold = 0.35  # 0.35
         self.text_threshold = 0.25
         self.sam_model = sam_model_registry[sam_encoder_version](
             checkpoint=sam_checkpoint_path).to(device=device)
@@ -218,6 +218,7 @@ class ManageFrames:
         return [frame[0] for frame in selected_frames]
 
     def cylindrical_unwrap(self, image, mask, f=200):
+        print('CYLINDRICAL UNWARP!!!')
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
                                        cv2.CHAIN_APPROX_SIMPLE)
         if len(contours) < 1:
