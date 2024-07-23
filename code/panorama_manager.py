@@ -15,7 +15,7 @@ class ManagePanorama:
     output frames.
     """
     def __init__(self,
-                 frame_manager, interval: int = 26,  # was 23
+                 frame_manager, interval: int = 20,  # was 23
                  display_current: bool = False) -> None:
         """
         parameters:
