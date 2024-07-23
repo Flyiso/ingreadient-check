@@ -81,11 +81,25 @@ class DepthCorrection:
         # these should be 'normalized' somehow.
         pixels_start = [edge_point[0] for edge_point in edge_points]
         pixels_end = [edge_point[1] for edge_point in edge_points]
+        pixels_start = self.normalize_values(pixels_start)
+        pixels_end = self.normalize_values(pixels_end)
 
-        depth_values = []
-        for row, points in zip(depth_map_gradient, edge_points):
-            depth_values.append(row[points[0]:points[1]])
+        pixel_map = []
+        for start, stop in zip(pixels_start, pixels_end):
+            pixel_map.append(np.linspace(start, stop, len(depth_img[0])))
+        return pixel_map
 
+    @staticmethod
+    def normalize_values(values):
+        values = np.array(values)
+
+        mean = np.mean(values)
+        std = np.std(values)
+
+        values[values < mean-std] = mean-std
+        values[values > mean+std] = mean+std
+
+        return values.tolist()
 
     def correct_image(self, frame: np.ndarray,
                       depth_mask: np.ndarray) -> np.ndarray:
