@@ -32,9 +32,8 @@ class DepthCorrection:
         )
         frame_bgra[:, :, 3] = alpha_channel
         cv2.imwrite('masked.png', frame_bgra)
-        print(frame_bgra.shape)
         frame = Image.fromarray(frame_bgra)
-        pipe = pipeline(task="depth-estimation",
+        pipe = pipeline(task="depth-estimation",  # REMOVE DEPTH ESTIMATION.
                         model="LiheYoung/depth-anything-large-hf")
         depth = np.array(pipe(frame)["depth"])
         depth = cv2.cvtColor(depth, cv2.COLOR_BGR2BGRA)
