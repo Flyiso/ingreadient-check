@@ -156,13 +156,13 @@ class StitcherSet:
     """
     def __init__(self, try_use_gpu: bool = True,
                  blend_strength: int = 5, block_size: int = 5,
-                 nr_feeds: int = 1, match_conf: float = 0.4,
+                 nr_feeds: int = 1, match_conf: float = 0.5,
                  blender_type: str = 'multiband',
                  compensator: str = 'gain_blocks',
                  detector: str = 'sift',
                  finder: str = 'dp_color',
                  matcher_type: str = 'affine',
-                 warper_type: str = 'transverseMercator',  # was 'cylindrical'
+                 warper_type: str = 'plane',  # was 'cylindrical'
                  wave_correct_kind: str = 'no') -> None:
         """
         Control of the stitcher object.

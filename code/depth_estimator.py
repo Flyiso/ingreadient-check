@@ -75,8 +75,17 @@ class DepthCorrection:
         flattened_image = cv2.remap(frame, map_a, map_b,
                                     interpolation=cv2.INTER_NEAREST,
                                     borderMode=cv2.BORDER_WRAP)
+
+        gray = cv2.cvtColor(flattened_image, cv2.COLOR_BGRA2GRAY)
+        flattened_image = cv2.cvtColor(flattened_image, cv2.COLOR_BGRA2BGR)
+        _, mask = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY_INV)
+        flattened_image = self.inpaint_img(flattened_image, mask)
         cv2.imwrite('flat_img.png', flattened_image)
         self.frame = flattened_image
+
+    def inpaint_img(self, img, mask):
+        img = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
+        return img
 
     def fit_to_line(self, y):
         x = np.arange(len(y)).reshape(-1, 1)
