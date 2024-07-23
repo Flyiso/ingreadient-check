@@ -52,30 +52,10 @@ class DepthCorrection:
 
         self.correct_image(frame=frame_bgra, depth_mask=depth)
 
-    def _estimate_depth(self, frame, mask):
-        pass
-
     def flatten_label_by_contours(self, depth_img):
         """
         use contours to get area of label.
         """
-        # get lists of poins with contours and numpys linspace.
-        # use some kind of 'normalization' to correct errors for things
-        # like uneven labels.
-        # also make sure different shapes/perspectives are concidered
-        # Make depth mask a relevant factor for the final map.
-        # REMEMBER: Map describes what 'original' pixel is at current point.
-
-        # PLAN:
-        # get min and max for each 'row'(or column)
-        # do some kind of normalization(visual note- second grade equation and straight or normal distrobution)
-        # do np.linspace for those.
-        # find way to give different 'depth' weight in creation of final array.
-        #   for value in range(start,stop:)
-        #   add depth value.
-        #   sum(depth_values)//len(depth_values)=mean
-        #   
-        # return arrays as map.
         edge_points = []
         for pixel_row in depth_img:
             roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 1]
@@ -111,15 +91,11 @@ class DepthCorrection:
         frame: BGRA image
         depth_mask: GRAYSCALE image
         """
-        # This section is to test new method
         map_a = cv2.flip(
             self.flatten_label_by_contours(depth_mask), 1).astype(np.float32)
         map_b = cv2.rotate(self.flatten_label_by_contours(
             cv2.rotate(depth_mask, cv2.ROTATE_90_CLOCKWISE)),
             cv2.ROTATE_90_COUNTERCLOCKWISE).astype(np.float32)
-        # TODO: Test to correct each line.
-        #map_b = cv2.GaussianBlur(map_b, (295, 15), 0)
-        #map_a = cv2.GaussianBlur(map_a, (15, 295), 0)
         cv2.imwrite('map_b.png', map_b)
         cv2.imwrite('map_a.png', map_a)
         flattened_image = cv2.remap(frame, map_a, map_b,
@@ -127,125 +103,6 @@ class DepthCorrection:
                                     borderMode=cv2.BORDER_WRAP)
         cv2.imwrite('flat_img.png', flattened_image)
         self.frame = flattened_image
-        return
-        # Past this is old code.
-        frame = frame  # bottle_image
-        depth_mask = cv2.equalizeHist(depth_mask)
-        depth_mask = cv2.normalize(depth_mask, None, 0, 255, cv2.NORM_MINMAX)
-
-        assert depth_mask.shape == frame.shape[:2], '''
-                Depth image and bottle image must be of the same dimensions.'''
-
-        cv2.imwrite('d_msk.png', depth_mask)
-        height, width = depth_mask.shape
-        blr_h = height//5
-        blr_w = width//5
-        if blr_h % 2 == 0:
-            blr_h += 1
-        if blr_w % 2 == 0:
-            blr_w += 1
-        cv2.imwrite('d_msk_blr.png', depth_mask)
-        depth_mask_long = cv2.GaussianBlur(depth_mask, (5, blr_h), 100)
-        map_a = np.array([self.get_map_row(depth_mask_long[y], 'lat')
-                          for y in range(height)]).astype(np.float32)
-
-        depth_mask_lat = cv2.GaussianBlur(depth_mask, (blr_w, 5), 200)
-        map_b = np.transpose(np.array([
-            self.get_map_row([w_vals[x] for w_vals in depth_mask_lat], 'long')
-            for x in range(width)
-            ]), (1, 0, 2)).astype(np.float32)
-
-        cv2.imwrite('map_a.png', map_a)
-        cv2.imwrite('map_b.png', map_b)
-
-        flattened_image = cv2.remap(frame, map_a, map_b,
-                                    interpolation=cv2.INTER_NEAREST,
-                                    borderMode=cv2.BORDER_WRAP)
-        cv2.imwrite('flat_img.png', flattened_image)
-        self.frame = flattened_image
-
-    def get_map_row(self, pixel_row, direction: str):
-        """
-        uses self.distribute to get values for map.
-        """
-        map_row = self.distribute_pixels(pixel_row, direction)
-        if len(map_row) == len(pixel_row):
-            return map_row
-        else:
-            print(pixel_row)
-            print(map_row)
-
-    def distribute_pixels(self, pixels, direction) -> np.ndarray:
-        """
-        returns the pixels with their new placement.
-        figures out what method to use to distribute and uses it.
-        """
-        if direction == 'lat':
-            pixels = self.distribute_surface(pixels)
-        if direction == 'long':
-            pixels = self.distribute_perspective(pixels)
-        pixels = np.array(pixels)
-        pixels = cv2.normalize(pixels, None, min(pixels),
-                               max(pixels), cv2.NORM_MINMAX)
-        return pixels
-
-    def distribute_surface(self, pixels) -> list:
-        """
-        distribute pixels, assuming middle of pixels are closer to camera
-        to lowest value.
-        TODO:
-        modify to get more space to high depth value
-        This does the opposite of what wanted?
-        """
-        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix > 1]
-        return np.linspace(min(roi), max(roi), len(pixels))
-
-    def distribute_perspective(self, pixels) -> list:
-        """
-        Distribute perspective when assuming one end of
-        pixel row is closer to camera.
-        """
-        roi = [idx_nr for idx_nr, pix in enumerate(pixels) if pix > 1]
-        print(max(roi), min(roi), len(roi))
-
-        return np.linspace(min(roi), max(roi), len(pixels))
-
-    def distribute(self, pixels):
-        """
-        pixels: depth pixels of half of the height
-                or width currently working with
-        """
-        pixel_a = cv2.normalize(pixels, None, 0, 255, cv2.NORM_MINMAX)
-        with open('numbers.csv', 'w') as csvfile:
-            writer = csv.DictWriter(csvfile,
-                                    fieldnames=['X', 'Y1', 'Y2', 'Y3'])
-            writer.writeheader()
-            n_s = []
-            x = []
-            y = []
-            n_dict = []
-            for nu, pix in enumerate(pixel_a):
-                x.append(nu)
-                y.append(pix)
-                n_s.append(pix)
-                n_dict.append({'X': nu, 'Y1': pix[-1]})
-            n_s.sort()
-            dy_dx = np.zeros_like(y, dtype=float)
-            for i in range(len(x)):
-                if i == 0:  # Forward difference for the first point
-                    dy_dx[i] = (y[i+1] - y[i]) / (x[i+1] - x[i])
-                elif i == len(x) - 1:  # Backward difference for the last point
-                    dy_dx[i] = (y[i] - y[i-1]) / (x[i] - x[i-1])
-                else:  # Central difference for interior points
-                    dy_dx[i] = (y[i+1] - y[i-1]) / (x[i+1] - x[i-1])
-
-            dy_dx = list(dy_dx)
-            dy_dx.sort()
-            for n_r, d_n, der_v in zip(n_s, n_dict, dy_dx):
-                d_n['Y2'] = n_r[-1]
-                d_n['Y3'] = der_v[0]
-            writer.writerows(n_dict)
-        input('')
 
     def fit_to_line(self, y):
         x = np.arange(len(y)).reshape(-1, 1)
