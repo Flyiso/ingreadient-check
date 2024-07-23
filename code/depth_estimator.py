@@ -38,7 +38,7 @@ class DepthCorrection:
         depth = cv2.cvtColor(depth, cv2.COLOR_BGR2BGRA)
         depth[:, :, 3] = alpha_channel
 
-        cv2.imwrite('depth.png', depth)
+        cv2.imwrite('depth.png', depth)  # send this to new method.
 
         _, _, _, a = cv2.split(depth)
         mask = a > 0
@@ -52,7 +52,7 @@ class DepthCorrection:
     def _estimate_depth(self, frame, mask):
         pass
 
-    def flatten_label_by_contours(self, depth_map, edges):
+    def flatten_label_by_contours(self, depth_map_gradient, depth_img):
         """
         use contours to get area of label.
         """
@@ -74,10 +74,18 @@ class DepthCorrection:
         #   
         # return arrays as map.
         edge_points = [] # use detected edges to avoid error with middle/closest section of image.
-        for pixel_row in depth_map:
+        for pixel_row in depth_img:
             roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 1]
             edge_points.append((max(roi), min(roi)))
-        pass
+
+        # these should be 'normalized' somehow.
+        pixels_start = [edge_point[0] for edge_point in edge_points]
+        pixels_end = [edge_point[1] for edge_point in edge_points]
+
+        depth_values = []
+        for row, points in zip(depth_map_gradient, edge_points):
+            depth_values.append(row[points[0]:points[1]])
+
 
     def correct_image(self, frame: np.ndarray,
                       depth_mask: np.ndarray) -> np.ndarray:
