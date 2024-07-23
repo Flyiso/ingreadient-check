@@ -57,8 +57,6 @@ class DepthCorrection:
         edge_points = []
         for pixel_row in depth_img:
             roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 1]
-            print(roi)
-            print(len(edge_points))
             if len(roi) < 1:
                 edge_points.append(edge_points[-1])
             else:
@@ -77,7 +75,7 @@ class DepthCorrection:
     def normalize_values(self, values):
         values = np.array(values)
         mean = np.mean(values)
-        std = np.std(values)*0.25
+        std = np.std(values)*0.33
 
         values[values < mean-std] = mean-std
         values[values > mean+std] = mean+std
