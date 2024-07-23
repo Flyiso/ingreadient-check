@@ -118,8 +118,8 @@ class DepthCorrection:
             cv2.rotate(depth_mask, cv2.ROTATE_90_CLOCKWISE)),
             cv2.ROTATE_90_COUNTERCLOCKWISE), 1).astype(np.float32)
         # TODO: Test to correct each line.
-        map_b = cv2.GaussianBlur(map_b, (295, 15), 0)
-        map_a = cv2.GaussianBlur(map_a, (15, 295), 0)
+        #map_b = cv2.GaussianBlur(map_b, (295, 15), 0)
+        #map_a = cv2.GaussianBlur(map_a, (15, 295), 0)
         cv2.imwrite('map_b.png', map_b)
         cv2.imwrite('map_a.png', map_a)
         flattened_image = cv2.remap(frame, map_a, map_b,
