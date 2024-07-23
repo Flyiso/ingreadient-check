@@ -159,10 +159,10 @@ class StitcherSet:
                  nr_feeds: int = 1, match_conf: float = 0.5,
                  blender_type: str = 'multiband',
                  compensator: str = 'gain_blocks',
-                 detector: str = 'sift',
+                 detector: str = 'brisk',
                  finder: str = 'dp_color',
                  matcher_type: str = 'affine',
-                 warper_type: str = 'plane',  # was 'cylindrical'
+                 warper_type: str = 'compressedPlaneA2B1',  # was 'cylindrical'
                  wave_correct_kind: str = 'no') -> None:
         """
         Control of the stitcher object.
