@@ -52,6 +52,17 @@ class DepthCorrection:
     def _estimate_depth(self, frame, mask):
         pass
 
+    def estimate_label_contours(self):
+        """
+        use contours to get area of label.
+        """
+        # get lists of poins with contours and numpys linspace.
+        # use some kind of 'normalization' to correct errors for things
+        # like uneven labels.
+        # also make sure different shapes/perspectives are concidered
+        # Make depth mask a relevant factor for the final map.
+        pass
+
     def correct_image(self, frame: np.ndarray,
                       depth_mask: np.ndarray) -> np.ndarray:
         """
