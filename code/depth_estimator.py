@@ -73,7 +73,7 @@ class DepthCorrection:
     def normalize_values(self, values):
         values = np.array(values)
         mean = np.mean(values)
-        std = np.std(values)
+        std = np.std(values)*0.25
 
         values[values < mean-std] = mean-std
         values[values > mean+std] = mean+std
