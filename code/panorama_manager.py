@@ -3,6 +3,7 @@ Classes directly related to stitching of images
 ManagePanorama class that control the flow of images
 through pre-processing and stitching.
 StitcherSet class that control stitcher object parameters and initialization
+NOTE: many images=better(and slower) result.
 """
 import cv2
 import numpy as np
@@ -15,7 +16,7 @@ class ManagePanorama:
     output frames.
     """
     def __init__(self,
-                 frame_manager, interval: int = 20,  # was 23
+                 frame_manager, interval: int = 10,  # was 23
                  display_current: bool = False) -> None:
         """
         parameters:
