@@ -64,6 +64,7 @@ class DepthCorrection:
         of length length where each value is evenly distributed
         from each other while depth values influence the as well.
         """
+        return
         print(start_value)
         print(stop_value)
         print(length)
@@ -71,10 +72,9 @@ class DepthCorrection:
         print('......')
 
     def normalize_values(self, values: list) -> list:
-        return values
         values = np.array(values)
         mean = np.mean(values)
-        std = np.std(values)*0.33
+        std = np.std(values)
 
         values[values < mean-std] = mean-std
         values[values > mean+std] = mean+std
@@ -143,6 +143,7 @@ class DepthCorrection:
         rmse_line = np.sqrt(mean_squared_error(y, y_fit_line))
         rmse_quad = np.sqrt(mean_squared_error(y, y_fit_quad))
 
+        print(f'rmse_line: {rmse_line}\nrmse_quad: {rmse_quad}\ndiff: {abs(rmse_line-rmse_quad)}')
         if rmse_line < rmse_quad:
             print('LINEAR')
             return y_fit_line
