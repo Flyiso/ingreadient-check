@@ -213,6 +213,9 @@ class DepthCorrection:
                 location_start = (row_idx, int(start))
                 location_stop = (row_idx, int(stop))
 
+            # LEN(ACTIVE)=indexes of where to find min/max distance/depth.
+            # Connected to short for this?/need to make sure it is long enough
+            # send in list of lengths instead?
             masked = cv2.circle(image, location_start,
                                 1, color_1, 1)
             masked = cv2.circle(masked, location_stop,
