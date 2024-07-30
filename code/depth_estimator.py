@@ -43,9 +43,31 @@ class DepthCorrection:
         pixels_end = self.normalize_values(pixels_end)
 
         pixel_map = []
-        for start, stop in zip(pixels_start, pixels_end):
+        for row_idx, (start, stop) in enumerate(zip(pixels_start, pixels_end)):
             pixel_map.append(np.linspace(start, stop, len(depth_img[0])))
+            self.distribute_by_depth_value(start, stop,
+                                           len(depth_img[0]),
+                                           depth_img[row_idx])
+            depth_img = cv2.circle(depth_img, (row_idx, int(start)),
+                                   1, (255), 1)
+            depth_img = cv2.circle(depth_img, (row_idx, int(stop)),
+                                   1, (0), 1)
+        cv2.imwrite('points.png', depth_img)
+        input('wait?')
         return np.array(pixel_map)
+
+    def distribute_by_depth_value(self, start_value: int, stop_value: int,
+                                  length: int, d_map_row: np.ndarray) -> list:
+        """
+        create a list of values from start_value to stop_value,
+        of length length where each value is evenly distributed
+        from each other while depth values influence the as well.
+        """
+        print(start_value)
+        print(stop_value)
+        print(length)
+        print(d_map_row)
+        print('......')
 
     def normalize_values(self, values):
         values = np.array(values)
