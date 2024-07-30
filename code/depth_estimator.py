@@ -21,11 +21,11 @@ class DepthCorrection:
     method just correct by values?
     """
     def __init__(self, frame: np.ndarray) -> None:
-        depth = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        masked_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame_bgra = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
-        self.correct_image(frame=frame_bgra, depth_mask=depth)
+        self.correct_image(frame=frame_bgra, masked=masked_img)
 
-    def flatten_label_by_contour(self, depth_img):
+    def get_flattening_maps(self, masked):
         """
         use contours to get area of label.
         TODO:use difference between min and max
@@ -34,32 +34,68 @@ class DepthCorrection:
             at the same time. differences  in min/max distance to allow pixel
             distribution that consider depth when flattening.
         """
-        edge_points = []
-        for pixel_row in depth_img:
+        map_base_a = masked
+        map_base_b = cv2.rotate(masked, cv2.ROTATE_90_CLOCKWISE)
+
+        edge_points_a = []
+        edge_points_b = []
+
+        for pixel_row in map_base_a:
             roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 0]
             if len(roi) < 1:
-                edge_points.append(edge_points[-1])
+                edge_points_a.append(edge_points_a[-1])
             else:
-                edge_points.append((max(roi), min(roi)))
+                edge_points_a.append((max(roi), min(roi)))
+        for pixel_row in map_base_b:
+            roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 0]
+            if len(roi) < 1:
+                edge_points_b.append(edge_points_b[-1])
+            else:
+                edge_points_b.append((max(roi), min(roi)))
 
-        pixels_start = [edge_point[0] for edge_point in edge_points]
-        pixels_end = [edge_point[1] for edge_point in edge_points]
-        pixels_start = self.normalize_values(pixels_start)
-        pixels_end = self.normalize_values(pixels_end)
+        pixels_a_start = [edge_point[0] for edge_point in edge_points_a]
+        pixels_a_end = [edge_point[1] for edge_point in edge_points_a]
+        pixels_a_start = self.normalize_values(pixels_a_start)
+        pixels_a_end = self.normalize_values(pixels_a_end)
+        pixels_b_start = [edge_point[0] for edge_point in edge_points_b]
+        pixels_b_end = [edge_point[1] for edge_point in edge_points_b]
+        pixels_b_start = self.normalize_values(pixels_b_start)
+        pixels_b_end = self.normalize_values(pixels_b_end)
 
-        pixel_map = []
-        depth_img = cv2.cvtColor(depth_img, cv2.COLOR_GRAY2BGR)
-        for row_idx, (start, stop) in enumerate(zip(pixels_start, pixels_end)):
-            pixel_map.append(np.linspace(start, stop, len(depth_img[0])))
-            self.distribute_by_depth_value(start, stop,
-                                           len(depth_img[0]),
-                                           depth_img[row_idx])
-            depth_img = cv2.circle(depth_img, (int(start), row_idx),
-                                   1, (255, 0, 255), 1)
-            depth_img = cv2.circle(depth_img, (int(stop), row_idx),
-                                   1, (0, 255, 0), 1)
-        cv2.imwrite('points.png', depth_img)
-        return np.array(pixel_map)
+        masked = cv2.cvtColor(masked, cv2.COLOR_GRAY2BGR)
+
+        pixel_map_a = []
+        pixel_map_b = []
+
+        for row_idx, (start, stop) in enumerate(zip(pixels_a_start,
+                                                    pixels_a_end)):
+            pixel_map_a.append(np.linspace(start, stop,
+                                           len(map_base_a[0])))
+            masked = cv2.circle(masked, (int(start), row_idx),
+                                1, (255, 0, 255), 1)
+            masked = cv2.circle(masked, (int(stop), row_idx),
+                                1, (0, 255, 0), 1)
+        for row_idx, (start, stop) in enumerate(zip(pixels_b_start,
+                                                    pixels_b_end)):
+            pixel_map_b.append(np.linspace(start, stop,
+                                           len(map_base_b[0])))
+            masked = cv2.circle(masked, (row_idx, int(start)),
+                                1, (0, 0, 255), 1)
+            masked = cv2.circle(masked, (row_idx, int(stop)),
+                                1, (255, 255, 0), 1)
+
+        cv2.imwrite('points.png', masked)
+
+        pixel_map_a = cv2.flip(np.array(pixel_map_a),
+                               1).astype(np.float32)
+        pixel_map_b = cv2.rotate(np.array(pixel_map_b),
+                                 cv2.ROTATE_90_COUNTERCLOCKWISE
+                                 ).astype(np.float32)
+        print(pixel_map_a.shape)
+        print(pixel_map_b.shape)
+        print(masked.shape)
+
+        return pixel_map_a, pixel_map_b
 
     def distribute_by_depth_value(self, start_value: int, stop_value: int,
                                   length: int, d_map_row: np.ndarray) -> list:
@@ -87,18 +123,14 @@ class DepthCorrection:
         return values.tolist()
 
     def correct_image(self, frame: np.ndarray,
-                      depth_mask: np.ndarray) -> np.ndarray:
+                      masked: np.ndarray) -> np.ndarray:
         """
         use estimated size to correct
         the images shape and perspective
         frame: BGRA image
         depth_mask: GRAYSCALE image
         """
-        map_a = cv2.flip(
-            self.flatten_label_by_contour(depth_mask), 1).astype(np.float32)
-        map_b = cv2.rotate(self.flatten_label_by_contour(
-            cv2.rotate(depth_mask, cv2.ROTATE_90_CLOCKWISE)),
-            cv2.ROTATE_90_COUNTERCLOCKWISE).astype(np.float32)
+        map_a, map_b = self.get_flattening_maps(masked)
         cv2.imwrite('map_b.png', map_b)
         cv2.imwrite('map_a.png', map_a)
         flattened_image = cv2.remap(frame, map_a, map_b,
@@ -140,6 +172,10 @@ class DepthCorrection:
         return y_fit
 
     def choose_best_fit(self, y):
+        """
+        TODO: update this to compare rmse sum  opposite 'lines' and choose
+            best fit by comparing them to connected lines
+        """
         y_fit_line = self.fit_to_line(y)
         y_fit_quad = self.fit_to_quadratic(y)
 
@@ -148,8 +184,8 @@ class DepthCorrection:
         rmse_quad = np.sqrt(mean_squared_error(y, y_fit_quad))
 
         if abs(rmse_line-rmse_quad) <= 5:
-            print(f'LINEAR,{rmse_line}')
+            print(f'LINEAR,  {rmse_line}')
             return y_fit_line
         else:
-            print(f'SECOND GRADE,  {rmse_quad}')
+            print(f'SECOND GRADE, {rmse_quad}')
             return y_fit_quad
