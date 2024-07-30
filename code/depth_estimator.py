@@ -25,111 +25,6 @@ class DepthCorrection:
         frame_bgra = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
         self.correct_image(frame=frame_bgra, masked=masked_img)
 
-    def get_flattening_maps(self, masked):
-        """
-        use contours to get area of label.
-        TODO:use difference between min and max
-            and use the difference to estimate distance.
-        TODO:(?) update this method(or code in general) to create the 2 maps
-            at the same time. differences  in min/max distance to allow pixel
-            distribution that consider depth when flattening.
-        TODO: Update with separate method to call for each map making.
-        """
-        # Create bases for map making info
-        map_base_a = masked
-        map_base_b = cv2.rotate(masked, cv2.ROTATE_90_CLOCKWISE)
-        edge_points_a = []
-        edge_points_b = []
-
-        # Find min and max for each row(map_a) and column(map_b)
-        for pixel_row in map_base_a:
-            roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 0]
-            if len(roi) < 1:
-                edge_points_a.append(edge_points_a[-1])
-            else:
-                edge_points_a.append((max(roi), min(roi)))
-        for pixel_row in map_base_b:
-            roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 0]
-            if len(roi) < 1:
-                edge_points_b.append(edge_points_b[-1])
-            else:
-                edge_points_b.append((max(roi), min(roi)))
-
-        # Get lists of min\max indexes,
-        # and adjust them to fit to first or second grade equations
-        # A
-        pixels_a_start = [edge_point[0] for edge_point in edge_points_a]
-        pixels_a_end = [edge_point[1] for edge_point in edge_points_a]
-        pixels_a_start = self.normalize_values(pixels_a_start)
-        pixels_a_end = self.normalize_values(pixels_a_end)
-        # B
-        pixels_b_start = [edge_point[0] for edge_point in edge_points_b]
-        pixels_b_end = [edge_point[1] for edge_point in edge_points_b]
-        pixels_b_start = self.normalize_values(pixels_b_start)
-        pixels_b_end = self.normalize_values(pixels_b_end)
-
-        # TODO: make distribution of points consider est. depth(min\max diff)
-        masked = cv2.cvtColor(masked, cv2.COLOR_GRAY2BGR)
-
-        # TODO: move code from above to separate method.
-        # Create empty maps for img correction
-        pixel_map_a = []
-        pixel_map_b = []
-
-        # Fill Maps and print estimated edge lines on test image.
-        for row_idx, (start, stop) in enumerate(zip(pixels_a_start,
-                                                    pixels_a_end)):
-            pixel_map_a.append(np.linspace(start, stop,
-                                           len(map_base_a[0])))
-            masked = cv2.circle(masked, (int(start), row_idx),
-                                1, (255, 0, 255), 1)
-            masked = cv2.circle(masked, (int(stop), row_idx),
-                                1, (0, 255, 0), 1)
-        for row_idx, (start, stop) in enumerate(zip(pixels_b_start,
-                                                    pixels_b_end)):
-            pixel_map_b.append(np.linspace(start, stop,
-                                           len(map_base_b[0])))
-            masked = cv2.circle(masked, (row_idx, int(start)),
-                                1, (0, 0, 255), 1)
-            masked = cv2.circle(masked, (row_idx, int(stop)),
-                                1, (255, 255, 0), 1)
-
-        cv2.imwrite('points.png', masked)
-
-        # Transform maps for remapping and return them.
-        pixel_map_a = cv2.flip(np.array(pixel_map_a),
-                               1).astype(np.float32)
-        pixel_map_b = cv2.rotate(np.array(pixel_map_b),
-                                 cv2.ROTATE_90_COUNTERCLOCKWISE
-                                 ).astype(np.float32)
-
-        return pixel_map_a, pixel_map_b
-
-    def distribute_by_depth_value(self, start_value: int, stop_value: int,
-                                  length: int, d_map_row: np.ndarray) -> list:
-        """
-        create a list of values from start_value to stop_value,
-        of length length where each value is evenly distributed
-        from each other while depth values influence the as well.
-        """
-        return
-        print(start_value)
-        print(stop_value)
-        print(length)
-        print(d_map_row)
-        print('......')
-
-    def normalize_values(self, values: list) -> list:
-        values = np.array(values)
-        mean = np.mean(values)
-        std = np.std(values)
-
-        values[values < mean-std] = mean-std
-        values[values > mean+std] = mean+std
-        values = self.choose_best_fit(values)
-
-        return values.tolist()
-
     def correct_image(self, frame: np.ndarray,
                       masked: np.ndarray) -> np.ndarray:
         """
@@ -152,9 +47,97 @@ class DepthCorrection:
         cv2.imwrite('flat_img.png', flattened_image)
         self.frame = flattened_image
 
-    def inpaint_img(self, img, mask):
-        img = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
-        return img
+    def get_flattening_maps(self, masked):
+        """
+        Method to create 2 maps for flattening/remapping.
+        TODO:use difference between min and max
+            and use the difference to estimate distance.
+        TODO:(?) update this method(or code in general) to create the 2 maps
+            at the same time. differences  in min/max distance to allow pixel
+            distribution that consider depth when flattening.
+        TODO: Update with separate method to call for each map making.
+        """
+        map_base_a = masked
+        map_base_b = cv2.rotate(masked, cv2.ROTATE_90_CLOCKWISE)
+
+        edge_points_a = self.get_edge_points(map_base_a)
+        edge_points_b = self.get_edge_points(map_base_b)
+
+        pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end \
+            = self.distribute_by_shape(edge_points_a, edge_points_b)
+
+        masked = cv2.cvtColor(masked, cv2.COLOR_GRAY2BGR)
+        pixel_map_a, masked = self.get_maps(True,
+                                            pixels_a_start, pixels_a_end,
+                                            pixels_b_start, pixels_b_end,
+                                            len(map_base_a[0]), masked,
+                                            (255, 255, 0), (0, 0, 255))
+        pixel_map_b, masked = self.get_maps(False,
+                                            pixels_b_start, pixels_b_end,
+                                            pixels_a_start, pixels_a_end,
+                                            len(map_base_b[0]), masked,
+                                            (255, 0, 255), (0, 255, 0))
+        cv2.imwrite('points.png', masked)
+
+        # Transform maps for remapping and return them.
+        pixel_map_a = cv2.flip(np.array(pixel_map_a),
+                               1).astype(np.float32)
+        pixel_map_b = cv2.rotate(np.array(pixel_map_b),
+                                 cv2.ROTATE_90_COUNTERCLOCKWISE
+                                 ).astype(np.float32)
+
+        return pixel_map_a, pixel_map_b
+
+    def get_edge_points(self, map_base: np.ndarray) -> list:
+        """
+        indexes of where ROI of each row of the map start and end.
+        Return as list of pairs for each row.
+        """
+        edge_points = []
+
+        for pixel_row in map_base:
+            roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 0]
+            if len(roi) < 1:
+                edge_points.append(edge_points[-1])
+            else:
+                edge_points.append((max(roi), min(roi)))
+        return edge_points
+
+    def distribute_by_shape(self, edge_points_a, edge_points_b):
+        """
+        estimate the four sides of ROI
+        """
+        # Get lists of min\max indexes,
+        # and adjust them to fit to first or second grade equations
+        # A
+        pixels_a_start = [edge_point[0] for edge_point in edge_points_a]
+        pixels_a_end = [edge_point[1] for edge_point in edge_points_a]
+        # B
+        pixels_b_start = [edge_point[0] for edge_point in edge_points_b]
+        pixels_b_end = [edge_point[1] for edge_point in edge_points_b]
+
+        pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end\
+            = self.normalize_values(pixels_a_start, pixels_a_end,
+                                    pixels_b_start, pixels_b_end)
+
+        return pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end
+
+    def normalize_values(self,
+                         pixels_a_start, pixels_a_end,
+                         pixels_b_start, pixels_b_end) -> list:
+        to_best_fit = []
+        for values in [pixels_a_start, pixels_a_end,
+                       pixels_b_start, pixels_b_end]:
+            values = np.array(values)
+            mean = np.mean(values)
+            std = np.std(values)
+            values[values < mean-std] = mean-std
+            values[values > mean+std] = mean+std
+            to_best_fit.append(values)
+
+        pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end\
+            = self.choose_best_fit(to_best_fit)
+        return pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end
 
     def fit_to_line(self, y):
         x = np.arange(len(y)).reshape(-1, 1)
@@ -179,21 +162,63 @@ class DepthCorrection:
         y_fit = model.predict(x_poly)
         return y_fit
 
-    def choose_best_fit(self, y):
+    def choose_best_fit(self, pixel_values):
         """
-        TODO: update this to compare rmse sum  opposite 'lines' and choose
-            best fit by comparing them to connected lines
+        pixel_values:
+        list of 4 arrays,
+        idx 0 and 2 are opposite
+        idx 1 and 3 are opposite
+        This method expects to fit to 2 second grade equations and 2 first.
+        TODO: Figure out how to make tis more adaptable to e.g. perspectives
         """
-        y_fit_line = self.fit_to_line(y)
-        y_fit_quad = self.fit_to_quadratic(y)
+        line_fits = []
+        quad_fits = []
+        for values in pixel_values:
+            line_fits.append(self.fit_to_line(values))
+            quad_fits.append(self.fit_to_quadratic(values))
 
-        # Calculate RMSE for both models
-        rmse_line = np.sqrt(mean_squared_error(y, y_fit_line))
-        rmse_quad = np.sqrt(mean_squared_error(y, y_fit_quad))
+        rmse_line_0_1 = \
+            np.sqrt(mean_squared_error(pixel_values[0], line_fits[0])) +\
+            np.sqrt(mean_squared_error(pixel_values[1], line_fits[1]))
+        rmse_line_2_3 = \
+            np.sqrt(mean_squared_error(pixel_values[2], line_fits[2])) +\
+            np.sqrt(mean_squared_error(pixel_values[3], line_fits[3]))
 
-        if abs(rmse_line-rmse_quad) <= 5:
-            print(f'LINEAR,  {rmse_line}')
-            return y_fit_line
+        if rmse_line_0_1 > rmse_line_2_3:
+            a, b, c, d = quad_fits[0].tolist(), quad_fits[1].tolist(), \
+                line_fits[2].tolist(), line_fits[3].tolist()
         else:
-            print(f'SECOND GRADE, {rmse_quad}')
-            return y_fit_quad
+            a, b, c, d = line_fits[0].tolist(), line_fits[1].tolist(), \
+                quad_fits[2].tolist(), quad_fits[3].tolist()
+        return a, b, c, d
+
+    def get_maps(self, first_value: bool,
+                 pixels_start: list, pixels_end: list,
+                 connected_start: list, connected_end: list,
+                 len_active: int, image: np.ndarray,
+                 color_1: tuple, color_2: tuple):
+        """
+        generate the actual maps.
+        TODO: make this take width/difference between numbers into account.
+              for roi length index at the opposite direction.
+        """
+        pixel_map = []
+        for row_idx, (start, stop) in enumerate(zip(pixels_start,
+                                                    pixels_end)):
+            pixel_map.append(np.linspace(start, stop, len_active))
+            if first_value:
+                location_start = (int(start), row_idx)
+                location_stop = (int(stop), row_idx)
+            else:
+                location_start = (row_idx, int(start))
+                location_stop = (row_idx, int(stop))
+
+            masked = cv2.circle(image, location_start,
+                                1, color_1, 1)
+            masked = cv2.circle(masked, location_stop,
+                                1, color_2, 1)
+        return pixel_map, masked
+
+    def inpaint_img(self, img, mask):
+        img = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
+        return img
