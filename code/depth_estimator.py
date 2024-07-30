@@ -62,6 +62,7 @@ class DepthCorrection:
         pixels_b_start = self.normalize_values(pixels_b_start)
         pixels_b_end = self.normalize_values(pixels_b_end)
 
+        # TODO: make distribution of points consider est. depth(min\max diff)
         masked = cv2.cvtColor(masked, cv2.COLOR_GRAY2BGR)
 
         pixel_map_a = []
