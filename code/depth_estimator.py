@@ -144,7 +144,7 @@ class DepthCorrection:
         rmse_quad = np.sqrt(mean_squared_error(y, y_fit_quad))
 
         print(f'rmse_line: {rmse_line}\nrmse_quad: {rmse_quad}\ndiff: {abs(rmse_line-rmse_quad)}')
-        if rmse_line < rmse_quad:
+        if abs(rmse_line-rmse_quad) <= 4:
             print('LINEAR')
             return y_fit_line
         else:
