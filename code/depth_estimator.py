@@ -31,7 +31,7 @@ class DepthCorrection:
         """
         edge_points = []
         for pixel_row in depth_img:
-            roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 1]
+            roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 0]
             if len(roi) < 1:
                 edge_points.append(edge_points[-1])
             else:
@@ -43,15 +43,16 @@ class DepthCorrection:
         pixels_end = self.normalize_values(pixels_end)
 
         pixel_map = []
+        depth_img = cv2.cvtColor(depth_img, cv2.COLOR_GRAY2BGR)
         for row_idx, (start, stop) in enumerate(zip(pixels_start, pixels_end)):
             pixel_map.append(np.linspace(start, stop, len(depth_img[0])))
             self.distribute_by_depth_value(start, stop,
                                            len(depth_img[0]),
                                            depth_img[row_idx])
-            depth_img = cv2.circle(depth_img, (row_idx, int(start)),
-                                   1, (255), 1)
-            depth_img = cv2.circle(depth_img, (row_idx, int(stop)),
-                                   1, (0), 1)
+            depth_img = cv2.circle(depth_img, (int(start), row_idx),
+                                   1, (255, 0, 255), 1)
+            depth_img = cv2.circle(depth_img, (int(stop), row_idx),
+                                   1, (0, 255, 0), 1)
         cv2.imwrite('points.png', depth_img)
         input('wait?')
         return np.array(pixel_map)
@@ -69,7 +70,8 @@ class DepthCorrection:
         print(d_map_row)
         print('......')
 
-    def normalize_values(self, values):
+    def normalize_values(self, values: list) -> list:
+        return values
         values = np.array(values)
         mean = np.mean(values)
         std = np.std(values)*0.33
@@ -142,6 +144,8 @@ class DepthCorrection:
         rmse_quad = np.sqrt(mean_squared_error(y, y_fit_quad))
 
         if rmse_line < rmse_quad:
+            print('LINEAR')
             return y_fit_line
         else:
+            print('SECOND GRADE')
             return y_fit_quad
