@@ -33,13 +33,15 @@ class DepthCorrection:
         TODO:(?) update this method(or code in general) to create the 2 maps
             at the same time. differences  in min/max distance to allow pixel
             distribution that consider depth when flattening.
+        TODO: Update with separate method to call for each map making.
         """
+        # Create bases for map making info
         map_base_a = masked
         map_base_b = cv2.rotate(masked, cv2.ROTATE_90_CLOCKWISE)
-
         edge_points_a = []
         edge_points_b = []
 
+        # Find min and max for each row(map_a) and column(map_b)
         for pixel_row in map_base_a:
             roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 0]
             if len(roi) < 1:
@@ -53,10 +55,14 @@ class DepthCorrection:
             else:
                 edge_points_b.append((max(roi), min(roi)))
 
+        # Get lists of min\max indexes,
+        # and adjust them to fit to first or second grade equations
+        # A
         pixels_a_start = [edge_point[0] for edge_point in edge_points_a]
         pixels_a_end = [edge_point[1] for edge_point in edge_points_a]
         pixels_a_start = self.normalize_values(pixels_a_start)
         pixels_a_end = self.normalize_values(pixels_a_end)
+        # B
         pixels_b_start = [edge_point[0] for edge_point in edge_points_b]
         pixels_b_end = [edge_point[1] for edge_point in edge_points_b]
         pixels_b_start = self.normalize_values(pixels_b_start)
@@ -65,9 +71,12 @@ class DepthCorrection:
         # TODO: make distribution of points consider est. depth(min\max diff)
         masked = cv2.cvtColor(masked, cv2.COLOR_GRAY2BGR)
 
+        # TODO: move code from above to separate method.
+        # Create empty maps for img correction
         pixel_map_a = []
         pixel_map_b = []
 
+        # Fill Maps and print estimated edge lines on test image.
         for row_idx, (start, stop) in enumerate(zip(pixels_a_start,
                                                     pixels_a_end)):
             pixel_map_a.append(np.linspace(start, stop,
@@ -87,14 +96,12 @@ class DepthCorrection:
 
         cv2.imwrite('points.png', masked)
 
+        # Transform maps for remapping and return them.
         pixel_map_a = cv2.flip(np.array(pixel_map_a),
                                1).astype(np.float32)
         pixel_map_b = cv2.rotate(np.array(pixel_map_b),
                                  cv2.ROTATE_90_COUNTERCLOCKWISE
                                  ).astype(np.float32)
-        print(pixel_map_a.shape)
-        print(pixel_map_b.shape)
-        print(masked.shape)
 
         return pixel_map_a, pixel_map_b
 
