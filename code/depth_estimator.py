@@ -28,6 +28,11 @@ class DepthCorrection:
     def flatten_label_by_contour(self, depth_img):
         """
         use contours to get area of label.
+        TODO:use difference between min and max
+            and use the difference to estimate distance.
+        TODO:(?) update this method(or code in general) to create the 2 maps
+            at the same time. differences  in min/max distance to allow pixel
+            distribution that consider depth when flattening.
         """
         edge_points = []
         for pixel_row in depth_img:
@@ -54,7 +59,6 @@ class DepthCorrection:
             depth_img = cv2.circle(depth_img, (int(stop), row_idx),
                                    1, (0, 255, 0), 1)
         cv2.imwrite('points.png', depth_img)
-        input('wait?')
         return np.array(pixel_map)
 
     def distribute_by_depth_value(self, start_value: int, stop_value: int,
@@ -143,10 +147,9 @@ class DepthCorrection:
         rmse_line = np.sqrt(mean_squared_error(y, y_fit_line))
         rmse_quad = np.sqrt(mean_squared_error(y, y_fit_quad))
 
-        print(f'rmse_line: {rmse_line}\nrmse_quad: {rmse_quad}\ndiff: {abs(rmse_line-rmse_quad)}')
-        if abs(rmse_line-rmse_quad) <= 4:
-            print('LINEAR')
+        if abs(rmse_line-rmse_quad) <= 5:
+            print(f'LINEAR,{rmse_line}')
             return y_fit_line
         else:
-            print('SECOND GRADE')
+            print(f'SECOND GRADE,  {rmse_quad}')
             return y_fit_quad
