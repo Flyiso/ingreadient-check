@@ -169,6 +169,8 @@ class DepthCorrection:
         idx 1 and 3 are opposite
         This method expects to fit to 2 second grade equations and 2 first.
         TODO: Figure out how to make tis more adaptable to e.g. perspectives
+        TODO: explore possibilities of making regression methods more dependent
+              on each other(not be to different)
         """
         line_fits = []
         quad_fits = []
