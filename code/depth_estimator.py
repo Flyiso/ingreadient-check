@@ -67,6 +67,7 @@ class DepthCorrection:
             = self.distribute_by_shape(edge_points_a, edge_points_b)
 
         masked = cv2.cvtColor(masked, cv2.COLOR_GRAY2BGR)
+        masked = cv2.flip(masked, 0)  # Seems to, in most cases fit edges better?.
         pixel_map_a, masked = self.get_maps(True,
                                             pixels_a_start, pixels_a_end,
                                             pixels_b_start, pixels_b_end,
