@@ -94,7 +94,6 @@ class DepthCorrection:
         Return as list of pairs for each row.
         """
         edge_points = []
-
         for pixel_row in map_base:
             roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 0]
             if len(roi) < 1:
@@ -129,7 +128,7 @@ class DepthCorrection:
         for values in [pixels_a_start, pixels_a_end,
                        pixels_b_start, pixels_b_end]:
             values = np.array(values)
-            mean = np.mean(values)
+            mean = np.median(values) #  Changed from mean to median
             std = np.std(values)
             values[values < mean-std] = mean-std
             values[values > mean+std] = mean+std
