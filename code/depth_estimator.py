@@ -128,10 +128,10 @@ class DepthCorrection:
         for values in [pixels_a_start, pixels_a_end,
                        pixels_b_start, pixels_b_end]:
             values = np.array(values)
-            mean = np.median(values) #  Changed from mean to median
+            median = np.median(values)
             std = np.std(values)
-            values[values < mean-std] = mean-std
-            values[values > mean+std] = mean+std
+            values[values < median-std] = median-std
+            values[values > median+std] = median+std
             to_best_fit.append(values)
 
         pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end\
