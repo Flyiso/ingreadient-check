@@ -92,8 +92,6 @@ class DepthCorrection:
                                cv2.ROTATE_90_COUNTERCLOCKWISE
                                           ), 0).astype(np.float32)
 
-
-
         return pixel_map_a, pixel_map_b
 
     def get_edge_points(self, map_base: np.ndarray,
