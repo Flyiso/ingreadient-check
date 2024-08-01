@@ -156,15 +156,16 @@ class StitcherSet:
     Class contain the stitcher used to do frame stitching.
     """
     def __init__(self, try_use_gpu: bool = True,
-                 blend_strength: int = 5, block_size: int = 5,
-                 nr_feeds: int = 1, match_conf: float = 0.5,
-                 blender_type: str = 'multiband',
+                 blend_strength: int = 1, block_size: int = 1,  # blend-s: 5, b-size:5
+                 nr_feeds: int = 50, match_conf: float = 0.5,  # nfeed: 1, conf: 0.5
+                 blender_type: str = 'multiband',  # multiband
                  compensator: str = 'gain_blocks',
                  detector: str = 'brisk',
-                 finder: str = 'dp_color',
-                 matcher_type: str = 'affine',
+                 finder: str = 'dp_colorgrad',  # dp_color
+                 matcher_type: str = 'affine',  # affine
                  warper_type: str = 'compressedPlaneA2B1',  # was 'cylindrical'
-                 wave_correct_kind: str = 'no') -> None:
+                 wave_correct_kind: str = 'auto',  # no
+                 ) -> None:
         """
         Control of the stitcher object.
         parameters:
