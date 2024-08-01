@@ -152,6 +152,7 @@ class DepthCorrection:
         y = np.array(y)
 
         model = LinearRegression()
+        #model = ElasticNet()
         model.fit(x, y)
 
         y_fit = model.predict(x)
