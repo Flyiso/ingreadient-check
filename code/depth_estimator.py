@@ -64,13 +64,13 @@ class DepthCorrection:
         map_base_b = cv2.rotate(masked, cv2.ROTATE_90_CLOCKWISE)
 
         edge_points_a = self.get_edge_points(map_base_a)
-        edge_points_b = self.get_edge_points(map_base_b)
+        edge_points_b = self.get_edge_points(map_base_b, reverse=True)
 
         pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end \
             = self.distribute_by_shape(edge_points_a, edge_points_b)
 
         masked = cv2.cvtColor(masked, cv2.COLOR_GRAY2BGR)
-        # masked = cv2.flip(masked, 0)
+        masked = cv2.flip(masked, 0)
         # Seems to, in most cases fit edges better when flipped upside down?.
         # test with another video seems to confirm this.
         pixel_map_a, masked = self.get_maps(True,
@@ -83,18 +83,20 @@ class DepthCorrection:
                                             pixels_a_start, pixels_a_end,
                                             len(map_base_b[0]), masked,
                                             (255, 0, 255), (0, 255, 0))
+        masked = cv2.flip(masked, 0)
         cv2.imwrite('points.png', masked)
 
         # Transform maps for remapping and return them.
         pixel_map_a = cv2.flip(np.array(pixel_map_a),
                                1).astype(np.float32)
-        pixel_map_b = cv2.rotate(np.array(pixel_map_b),
-                                 cv2.ROTATE_90_COUNTERCLOCKWISE
-                                 ).astype(np.float32)
+        pixel_map_b = cv2.flip(cv2.rotate(np.array(pixel_map_b),
+                               cv2.ROTATE_90_COUNTERCLOCKWISE
+                                          ), 0).astype(np.float32)
 
         return pixel_map_a, pixel_map_b
 
-    def get_edge_points(self, map_base: np.ndarray) -> list:
+    def get_edge_points(self, map_base: np.ndarray,
+                        reverse: bool = False) -> list:
         """
         indexes of where ROI of each row of the map start and end.
         Return as list of pairs for each row.
@@ -106,6 +108,8 @@ class DepthCorrection:
                 edge_points.append(edge_points[-1])
             else:
                 edge_points.append((max(roi), min(roi)))
+        if reverse:
+            edge_points = [pair[::-1] for pair in edge_points]
         return edge_points
 
     def distribute_by_shape(self, edge_points_a, edge_points_b):
