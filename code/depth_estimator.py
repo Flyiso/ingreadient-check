@@ -56,6 +56,9 @@ class DepthCorrection:
             at the same time. differences  in min/max distance to allow pixel
             distribution that consider depth when flattening.
         TODO: Update with separate method to call for each map making.
+        TODO: Check the detection of edges compared to upside down img.
+        TODO: make sure edge detection for top and bottom are done correct.
+              double check what is happening.
         """
         map_base_a = masked
         map_base_b = cv2.rotate(masked, cv2.ROTATE_90_CLOCKWISE)
@@ -67,7 +70,9 @@ class DepthCorrection:
             = self.distribute_by_shape(edge_points_a, edge_points_b)
 
         masked = cv2.cvtColor(masked, cv2.COLOR_GRAY2BGR)
-        masked = cv2.flip(masked, 0)  # Seems to, in most cases fit edges better?.
+        # masked = cv2.flip(masked, 0)
+        # Seems to, in most cases fit edges better when flipped upside down?.
+        # test with another video seems to confirm this.
         pixel_map_a, masked = self.get_maps(True,
                                             pixels_a_start, pixels_a_end,
                                             pixels_b_start, pixels_b_end,

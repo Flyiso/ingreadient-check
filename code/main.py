@@ -45,4 +45,4 @@ def run_app(filepath, img_dir: str = None,
     cv2.imwrite(f'outputs/{img_dir}/Text_written.png', Img_with_text)
 
 
-run_app('videos/test_video_2.mp4', 'vid_2', frame_interval=15)
+run_app('videos/test_video_3.mp4', 'vid_3', frame_interval=15)
