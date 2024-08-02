@@ -5,7 +5,10 @@ to the dietary restrictions the user has.
 
 1) record labels to make application usable on containers with label wrapped around.
 
-TODO: Depth estimator neccessary? 
+TODO: Depth estimator necessary? could still be used to determine how much 'space' a pixel may use?
+
+TODO: manage areas w depth value < 5 (use contours instead?)
+
 TODO: test to crop as large as possible rectangular image from by-text-rotated image
  
 TODO: Test label_video_reader with more videos and images to modify and make application

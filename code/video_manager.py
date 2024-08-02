@@ -87,7 +87,7 @@ class RecordLabel:
             self.current_merge = self.panorama_manager.add_frame(frame)
         else:
             print('blurry frame removed')
-            self.save_image('blurry_frame', frame)
+            self.save_image('blrury_frame', frame)
         return frame, self.frame_manager.is_blurry(frame), self.current_merge
 
     def end_video(self, last_frame: bool | np.ndarray):
