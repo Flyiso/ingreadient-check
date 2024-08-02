@@ -159,12 +159,12 @@ class StitcherSet:
                  blend_strength: int = 1, block_size: int = 1,  # blend-s: 5, b-size:5
                  nr_feeds: int = 50, match_conf: float = 0.5,  # nfeed: 1, conf: 0.5
                  blender_type: str = 'multiband',  # multiband
-                 compensator: str = 'gain_blocks',
+                 compensator: str = 'gain',
                  detector: str = 'brisk',
-                 finder: str = 'dp_colorgrad',  # dp_color
+                 finder: str = 'dp_color',  # dp_color
                  matcher_type: str = 'affine',  # affine
                  warper_type: str = 'compressedPlaneA2B1',  # was 'cylindrical'
-                 wave_correct_kind: str = 'auto',  # no
+                 wave_correct_kind: str = 'no',  # no
                  ) -> None:
         """
         Control of the stitcher object.
