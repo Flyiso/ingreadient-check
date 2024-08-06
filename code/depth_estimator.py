@@ -158,7 +158,7 @@ class DepthCorrection:
         y_fit = model.predict(x)
         return y_fit
 
-    def fit_to_quadratic(self, y):
+    def fit_to_quadratic(self, y, alpha=0.9, l1_ratio=0.9):
         x = np.arange(len(y)).reshape(-1, 1)
         y = np.array(y)
 
@@ -166,7 +166,7 @@ class DepthCorrection:
         x_poly = poly.fit_transform(x)
 
         # model = LinearRegression()
-        model = ElasticNet()
+        model = ElasticNet(alpha=alpha, l1_ratio=l1_ratio)
         model.fit(x_poly, y)
 
         y_fit = model.predict(x_poly)

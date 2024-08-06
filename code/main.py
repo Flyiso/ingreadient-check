@@ -30,7 +30,7 @@ def run_app(filepath, img_dir: str = None,
     """
     """configs = ['--psm 1', '--psm 2', '--psm 3', '--psm 4', '--psm 5',
                '--psm 6', '--psm 7', '--psm 8',
-               '--psm 11', '--psm
+               '--psm 11', '--pss
                 12', '--psm 13']"""
     if img_dir is not None:
         check_directory(img_dir, frame_interval)
