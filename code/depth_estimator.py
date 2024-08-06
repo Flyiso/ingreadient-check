@@ -138,7 +138,7 @@ class DepthCorrection:
                        pixels_b_start, pixels_b_end]:
             values = np.array(values)
             median = np.median(values)
-            std = np.std(values)*0.5
+            std = np.std(values)
             values[values < median-std] = median-std
             values[values > median+std] = median+std
             to_best_fit.append(values)
@@ -158,7 +158,7 @@ class DepthCorrection:
         y_fit = model.predict(x)
         return y_fit
 
-    def fit_to_quadratic(self, y, alpha=0.9, l1_ratio=0.9):
+    def fit_to_quadratic(self, y, alpha=0.5, l1_ratio=0.7):
         x = np.arange(len(y)).reshape(-1, 1)
         y = np.array(y)
 
@@ -182,7 +182,7 @@ class DepthCorrection:
         TODO: Figure out how to make tis more adaptable to e.g. perspectives
         TODO: explore possibilities of making regression methods more dependent
               on each other(not be to different)
-        TODO: Maybe put this in separate class with model for each side to control
+        TODO: Maybe put this in separate class with model for each side control
               outlier problems.
         """
         line_fits = []
