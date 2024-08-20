@@ -4,7 +4,7 @@ correcting the frames.
 
 diff of max & min in label area = save, to not run this all the time
 run this once or a few times? when?
-TODO: make this take cyliners/circles into concideration
+TODO: make this take cylinders/circles into consideration
 """
 import numpy as np
 import cv2
