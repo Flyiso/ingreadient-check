@@ -8,7 +8,7 @@ TODO: make this take cylinders/circles into consideration
 """
 import numpy as np
 import cv2
-from sklearn.linear_model import LinearRegression, ElasticNet
+from sklearn.linear_model import LinearRegression, ElasticNet, LogisticRegression, Ridge
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import mean_squared_error
 
@@ -139,8 +139,8 @@ class DepthCorrection:
             values = np.array(values)
             median = np.median(values)
             std = np.std(values)
-            values[values < median-std] = median-std
-            values[values > median+std] = median+std
+            values[values < median-std*2] = median-std
+            values[values > median+std*2] = median+std
             to_best_fit.append(values)
 
         pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end\
@@ -151,8 +151,9 @@ class DepthCorrection:
         x = np.arange(len(y)).reshape(-1, 1)
         y = np.array(y)
 
-        model = LinearRegression()
-        #model = ElasticNet()
+        # model = LinearRegression() # decent
+        # model = LogisticRegression() # not very good
+        model = Ridge()
         model.fit(x, y)
 
         y_fit = model.predict(x)

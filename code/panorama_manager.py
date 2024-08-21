@@ -16,7 +16,7 @@ class ManagePanorama:
     output frames.
     """
     def __init__(self,
-                 frame_manager, interval: int = 10,  # was 23
+                 frame_manager, interval: int = 35,  # was 23
                  display_current: bool = False) -> None:
         """
         parameters:
@@ -125,7 +125,6 @@ class ManagePanorama:
         if isinstance(panorama, np.ndarray):
             self.panorama = cv2.addWeighted(panorama, 0.5, panorama, 0.5, 0)
             cv2.imwrite('progress_images/FinalPanorama.png', self.panorama)
-            #  stitcher.subsetter.save_matches_graph_dot_file()   # ????
             return True
         return False
 
@@ -156,7 +155,7 @@ class StitcherSet:
     Class contain the stitcher used to do frame stitching.
     """
     def __init__(self, try_use_gpu: bool = True,
-                 blend_strength: int = 5, block_size: int = 500,  # blend-s: 5, b-size:5
+                 blend_strength: int = 5, block_size: int = 1,  # blend-s: 5, b-size:5
                  nr_feeds: int = 5, match_conf: float = 0.5,  # nfeed: 1, conf: 0.5
                  blender_type: str = 'multiband',  # multiband
                  compensator: str = 'gain',
