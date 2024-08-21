@@ -46,6 +46,9 @@ TODO: modify for live usage.
       3. Make it return the final image- connect it all to class/code that connect it to everything else
          needed for database creation.
 
+TODO:  Try to 'force' merge by adjusting flattening/remapping until success.
+       then move on to next frame. (might solve bad flattening?)
+
 2) add option to add label by photo for fully visible labels.
 
 3) Detect words on ingredient label, filter and save by target language.
