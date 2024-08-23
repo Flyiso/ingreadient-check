@@ -288,6 +288,13 @@ class GetModel:
         self.final_model_start, \
             self.final_model_end = self.choose_best_model()
 
+        del self.linear_model_start, self.linear_model_end, \
+            self.lasso_model_start, self.lasso_model_end, \
+            self.ridge_model_start,  self.ridge_model_end, \
+            self.elastic_model_start,  self.elastic_model_end, \
+            self.svr_model_start,  self.svr_model_end
+        print(self.final_model_start,  self.final_model_end)
+
     def create_data_frame(self):
         """
         Convert the np.ndarray to pandas data frame
