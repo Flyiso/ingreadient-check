@@ -355,7 +355,31 @@ class GetModel:
         """
         Create evaluation with lasso regression
         """
-        pass
+        pipeline_lasso = Pipeline(steps=[
+            ('scale', StandardScaler()),
+            ('poly', PolynomialFeatures()),
+            ('regression', Lasso())])
+        param_grid = {'poly__degree': [1, 2, 3, 4],
+                      'regression__alpha': [0.10, 0.20, 0.30, 0.40, 0.50,
+                                            0.60, 0.70, 0.80, 0.90,
+                                            1, 5, 10, 50, 75, 100],
+                      'regression__tol': [0.3]}
+
+        lasso_pipe_grid = GridSearchCV(pipeline_lasso, param_grid,
+                                       cv=10, scoring='r2')
+        lasso_start = lasso_pipe_grid.fit(self.X_train_start,
+                                          self.Y_train_start)
+        lasso_end = lasso_pipe_grid.fit(self.X_train_end,
+                                        self.Y_train_end)
+
+        best_start = \
+            lasso_start.best_estimator_.fit(self.df.drop('values_start'),
+                                            self.df['values_start'])
+        best_end = \
+            lasso_end.best_estimator_.fit(self.df.drop('values_end'),
+                                          self.df['values_end'])
+
+        return best_start, best_end
 
     def create_ridge(self):
         """
