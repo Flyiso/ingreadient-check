@@ -7,9 +7,14 @@ run this once or a few times? when?
 TODO: make this take cylinders/circles into consideration
 """
 import numpy as np
+import pandas as pd
 import cv2
-from sklearn.linear_model import LinearRegression, ElasticNet, LogisticRegression, Ridge
-from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.svm import SVR
+from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.metrics import mean_squared_error
 
 
@@ -240,3 +245,89 @@ class DepthCorrection:
     def inpaint_img(self, img, mask):
         img = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
         return img
+
+
+class GetModel:
+    """
+    Temporary(?) class to test different
+    edge detection regressions
+    TODO: Explore CNN?
+    """
+
+    def __init__(self, image: np.ndarray):
+        self.roi_data = image
+        self.data_frame = self.create_data_frame()
+        self.X, self.Y = self.get_x_y()
+        self.X_train, self.Y_train,
+        self.X_test, self.Y_test = self.split_train_test()
+
+        self.model_stats = []
+        self.linear_model = self.create_linear()
+        self.lasso_model = self.create_lasso()
+        self.ridge_model = self.create_ridge()
+        self.elastic_model = self.create_elastic()
+        self.svr_model = self.create_svr()
+        self.final_model = self.choose_best_model()
+
+    def create_data_frame(self):
+        """
+        Convert the np.ndarray to pandas data frame
+        fields: index, height/width value, length of ROI(to add later on)
+        """
+        pass
+
+    def find_length_of_opposite_side(self):
+        """
+        for each start or end point, find number ROI pixels
+        in same row or column. Add info to data frame.
+        (find in columns if going left to right, find in rows else)
+        """
+        pass
+
+    def get_x_y(self):
+        """
+        Return dependent and target as separate variables
+        """
+        pass
+
+    def split_train_test(self):
+        """
+        Return train and test sets for dependent and target.
+        """
+        pass
+
+    def create_linear(self):
+        """
+        Create evaluation with linear regression
+        """
+        pass
+
+    def create_lasso(self):
+        """
+        Create evaluation with lasso regression
+        """
+        pass
+
+    def create_ridge(self):
+        """
+        Create evaluation with ridge model
+        """
+        pass
+
+    def create_elastic(self):
+        """
+        Create evaluation with elastic net model.
+        """
+        pass
+
+    def create_svr(self):
+        """
+        Create evaluation with SVR model
+        """
+        pass
+
+    def choose_best_model(self):
+        """
+        Compare performance of all models and choose the best.
+        """
+        pass
