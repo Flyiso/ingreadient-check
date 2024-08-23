@@ -264,18 +264,19 @@ class GetModel:
         self.indexes_start, self.indexes_end = indexes_start, indexes_end
         self.roi_data = image
         self.data_frame = self.create_data_frame()
-        self.X, self.Y = self.get_x_y()
-        self.X_train, self.Y_train,
-        self.X_test, self.Y_test = self.split_train_test()
+        self.X_train, self.X_test,
+        self.Y_train_start, self.Y_train_end,
+        self.Y_test_start, self.Y_test_end = self.split_train_test(
+            ['values_start', 'values_end'])
 
         self.model_start_stats = []
         self.model_end_stats = []
-        self.linear_model = self.create_linear()
-        self.lasso_model = self.create_lasso()
-        self.ridge_model = self.create_ridge()
-        self.elastic_model = self.create_elastic()
-        self.svr_model = self.create_svr()
-        self.final_model = self.choose_best_model()
+        self.linear_model_start, self.linear_model_end = self.create_linear()
+        self.lasso_model_start, self.lasso_model_end = self.create_lasso()
+        self.ridge_model_start, self.ridge_model_end = self.create_ridge()
+        self.elastic_model_start, self.elastic_model_end = self.create_elastic()
+        self.svr_model_start, self.svr_model_end = self.create_svr()
+        self.final_model_start, self.final_model_end = self.choose_best_model()
 
     def create_data_frame(self):
         """
@@ -285,7 +286,8 @@ class GetModel:
         df = pd.DataFrame({
             'idx': range(len(self.data)),
             'roi_len': [self.find_ROI_length()],
-            'values': self.data
+            'values_start': self.indexes_start,
+            'values_end': self.indexes_end
         })
         return df
 
@@ -297,13 +299,7 @@ class GetModel:
         """
         return np.count_nonzero(self.roi_data, axis=1)
 
-    def get_x_y(self):
-        """
-        Return dependent and target as separate variables
-        """
-        pass
-
-    def split_train_test(self):
+    def split_train_test(self, predict_columns: list):
         """
         Return train and test sets for dependent and target.
         """
