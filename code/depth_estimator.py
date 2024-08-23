@@ -254,14 +254,22 @@ class GetModel:
     TODO: Explore CNN?
     """
 
-    def __init__(self, image: np.ndarray):
+    def __init__(self, indexes_start, indexes_end, image: np.ndarray):
+        """
+        Create data frame and find values for ROI regression model.
+        input(indexes_start, indexes_end) must be of equal length.
+        image height must be of equal length as indexes.
+        image must be rotated so that each row includes a start and stop value.
+        """
+        self.indexes_start, self.indexes_end = indexes_start, indexes_end
         self.roi_data = image
         self.data_frame = self.create_data_frame()
         self.X, self.Y = self.get_x_y()
         self.X_train, self.Y_train,
         self.X_test, self.Y_test = self.split_train_test()
 
-        self.model_stats = []
+        self.model_start_stats = []
+        self.model_end_stats = []
         self.linear_model = self.create_linear()
         self.lasso_model = self.create_lasso()
         self.ridge_model = self.create_ridge()
@@ -274,15 +282,20 @@ class GetModel:
         Convert the np.ndarray to pandas data frame
         fields: index, height/width value, length of ROI(to add later on)
         """
-        pass
+        df = pd.DataFrame({
+            'idx': range(len(self.data)),
+            'roi_len': [self.find_ROI_length()],
+            'values': self.data
+        })
+        return df
 
-    def find_length_of_opposite_side(self):
+    def find_ROI_length(self) -> list:
         """
         for each start or end point, find number ROI pixels
         in same row or column. Add info to data frame.
         (find in columns if going left to right, find in rows else)
         """
-        pass
+        return np.count_nonzero(self.roi_data, axis=1)
 
     def get_x_y(self):
         """
