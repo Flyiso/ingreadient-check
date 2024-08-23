@@ -263,7 +263,7 @@ class GetModel:
         """
         self.indexes_start, self.indexes_end = indexes_start, indexes_end
         self.roi_data = image
-        self.data_frame = self.create_data_frame()
+        self.df = self.create_data_frame()
         self.X_train, self.X_test,
         self.Y_train_start, self.Y_train_end,
         self.Y_test_start, self.Y_test_end = self.split_train_test(
@@ -303,7 +303,17 @@ class GetModel:
         """
         Return train and test sets for dependent and target.
         """
-        pass
+        X_train_start, X_test_start, y_train_start, y_test_start = \
+            train_test_split(self.df.drop(predict_columns[0]),
+                             self.df[predict_columns[0]],
+                             test_size=0.2, random_state=101)
+        X_train_end, X_test_end, y_train_end, y_test_end = \
+            train_test_split(self.df.drop(predict_columns[1]),
+                             self.df[predict_columns[1]],
+                             test_size=0.2, random_state=101)
+
+        return X_train_start, X_train_end, X_test_start, X_test_end, \
+            y_train_start, y_train_end, y_test_start, y_test_end
 
     def create_linear(self):
         """
