@@ -264,19 +264,29 @@ class GetModel:
         self.indexes_start, self.indexes_end = indexes_start, indexes_end
         self.roi_data = image
         self.df = self.create_data_frame()
-        self.X_train, self.X_test,
-        self.Y_train_start, self.Y_train_end,
-        self.Y_test_start, self.Y_test_end = self.split_train_test(
-            ['values_start', 'values_end'])
+
+        self.X_train_start, self.X_train_end, \
+            self.X_test_start, self.X_test_end, \
+            self.Y_train_start, self.Y_train_end, \
+            self.Y_test_start, self.Y_test_end = \
+            self.split_train_test(['values_start', 'values_end'])
 
         self.model_start_stats = []
         self.model_end_stats = []
-        self.linear_model_start, self.linear_model_end = self.create_linear()
-        self.lasso_model_start, self.lasso_model_end = self.create_lasso()
-        self.ridge_model_start, self.ridge_model_end = self.create_ridge()
-        self.elastic_model_start, self.elastic_model_end = self.create_elastic()
-        self.svr_model_start, self.svr_model_end = self.create_svr()
-        self.final_model_start, self.final_model_end = self.choose_best_model()
+
+        self.linear_model_start, \
+            self.linear_model_end = self.create_linear()
+        self.lasso_model_start, \
+            self.lasso_model_end = self.create_lasso()
+        self.ridge_model_start, \
+            self.ridge_model_end = self.create_ridge()
+        self.elastic_model_start, \
+            self.elastic_model_end = self.create_elastic()
+        self.svr_model_start, \
+            self.svr_model_end = self.create_svr()
+
+        self.final_model_start, \
+            self.final_model_end = self.choose_best_model()
 
     def create_data_frame(self):
         """
@@ -319,7 +329,21 @@ class GetModel:
         """
         Create evaluation with linear regression
         """
-        pass
+        pipeline_linear = Pipeline(steps=[
+            ('scale', StandardScaler()),
+            ('poly', PolynomialFeatures()),
+            ('regression', LinearRegression())])
+        param_grid = {'poly_degree': [1, 2]}
+
+        linear_pipe_grid = GridSearchCV(pipeline_linear, param_grid,
+                                        cv=10, scoring='r2')
+        linear_start = linear_pipe_grid.fit()
+        linear_end = linear_pipe_grid.fit()
+
+        best_start = linear_start.best_estimator_.fit()
+        best_end = linear_end.best_estimator_.fit()
+
+        return best_start, best_end
 
     def create_lasso(self):
         """
