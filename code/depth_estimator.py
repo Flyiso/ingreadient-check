@@ -472,4 +472,28 @@ class GetModel:
         """
         Compare performance of all models and choose the best.
         """
-        pass
+        top_r2_start = [-1, None]
+        top_r2_end = [-1, None]
+        start_models = [self.linear_model_start, self.lasso_model_start,
+                        self.ridge_model_start, self.elastic_model_start,
+                        self.svr_model_start]
+        end_models = [self.linear_model_end, self.lasso_model_end,
+                      self.ridge_model_end, self.elastic_model_end,
+                      self.svr_model_end]
+
+        for start_model, end_model in zip(start_models, end_models):
+            test_start = start_model.predict(self.X_test_start)
+            r2_start = r2_score(y_true=self.Y_test_start,
+                                y_pred=test_start)
+            if r2_start > top_r2_start[0]:
+                top_r2_start[0] = r2_start
+                top_r2_start[1] = start_model
+
+            test_end = end_model.predict(self.X_test_end)
+            r2_end = r2_score(y_true=self.Y_test_end,
+                              y_pred=test_end)
+            if r2_end > top_r2_end[0]:
+                top_r2_end[0] = r2_end
+                top_r2_end[1] = end_model
+
+        return top_r2_start[1], top_r2_end[1]
