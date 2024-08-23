@@ -333,15 +333,21 @@ class GetModel:
             ('scale', StandardScaler()),
             ('poly', PolynomialFeatures()),
             ('regression', LinearRegression())])
-        param_grid = {'poly_degree': [1, 2]}
+        param_grid = {'poly_degree': [1, 2, 3, 4]}  # Remove 3 and 4 later?
 
         linear_pipe_grid = GridSearchCV(pipeline_linear, param_grid,
                                         cv=10, scoring='r2')
-        linear_start = linear_pipe_grid.fit()
-        linear_end = linear_pipe_grid.fit()
+        linear_start = linear_pipe_grid.fit(self.X_train_start,
+                                            self.Y_train_start)
+        linear_end = linear_pipe_grid.fit(self.X_train_end,
+                                          self.Y_train_end)
 
-        best_start = linear_start.best_estimator_.fit()
-        best_end = linear_end.best_estimator_.fit()
+        best_start = \
+            linear_start.best_estimator_.fit(self.df.drop('values_start'),
+                                             self.df['values_start'])
+        best_end = \
+            linear_end.best_estimator_.fit(self.df.drop('values_end'),
+                                           self.df['values_end'])
 
         return best_start, best_end
 
