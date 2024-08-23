@@ -385,7 +385,29 @@ class GetModel:
         """
         Create evaluation with ridge model
         """
-        pass
+        pipeline_ridge = Pipeline(steps=[
+            ('scale', StandardScaler()),
+            ('poly', PolynomialFeatures()),
+            ('regression', Ridge())])
+        param_grid = {'poly__degree': [1, 2, 3, 4],
+                      'regression__alpha': [0.1, 0.5, 1, 5, 10, 50, 100],
+                      'regression__tol': [0.5]}
+        ridge_pipe_grid = GridSearchCV(pipeline_ridge, param_grid,
+                                       cv=10, scoring='r2')
+
+        ridge_start = ridge_pipe_grid.fit(self.X_train_start,
+                                          self.Y_train_start)
+        ridge_end = ridge_pipe_grid.fit(self.X_train_end,
+                                        self.Y_train_end)
+
+        best_start = \
+            ridge_start.best_estimator_.fit(self.df.drop('values_start'),
+                                            self.df['values_start'])
+        best_end = \
+            ridge_end.best_estimator_.fit(self.df.drop('values_end'),
+                                          self.df['values_end'])
+
+        return best_start, best_end
 
     def create_elastic(self):
         """
