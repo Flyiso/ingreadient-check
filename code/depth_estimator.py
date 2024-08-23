@@ -443,7 +443,30 @@ class GetModel:
         """
         Create evaluation with SVR model
         """
-        pass
+        pipeline_svr = Pipeline(steps=[
+            ('scale', StandardScaler()),
+            ('regression', SVR())])
+        param_grid = {'regression__C': [0.001, 0.01, 0.1, 0.5, 5, 10, 100],
+                      'regression__kernel': ['linear', 'poly', 'rbf'],
+                      'regression__degree': [2, 3, 4, 5, 6],
+                      'regression__epsilon': [0, 0.01, 0.1, 0.5, 1, 2],
+                      'regression__gamma': ['scale', 'auto']}
+        svr_pipe_grid = GridSearchCV(pipeline_svr, param_grid,
+                                     cv=10, scoring='r2')
+
+        svr_start = svr_pipe_grid.fit(self.X_train_start,
+                                      self.Y_train_start)
+        svr_end = svr_pipe_grid.fit(self.X_train_end,
+                                    self.Y_train_end)
+
+        best_start = \
+            svr_start.best_estimator_.fit(self.df.drop('values_start'),
+                                          self.df['values_start'])
+        best_end = \
+            svr_end.best_estimator_.fit(self.df.drop('values_end'),
+                                        self.df['values_end'])
+
+        return best_start, best_end
 
     def choose_best_model(self):
         """
