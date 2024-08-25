@@ -38,8 +38,8 @@ class DepthCorrection:
         depth_mask: GRAYSCALE image
         """
         map_a, map_b = self.get_flattening_maps(masked)
-        cv2.imwrite('map_b.png', map_b)
-        cv2.imwrite('map_a.png', map_a)
+        cv2.imwrite('map_b_vertical.png', map_b)
+        cv2.imwrite('map_a_horizontal.png', map_a)
         flattened_image = cv2.remap(frame, map_a, map_b,
                                     interpolation=cv2.INTER_NEAREST,
                                     borderMode=cv2.BORDER_WRAP)
@@ -54,6 +54,7 @@ class DepthCorrection:
     def get_flattening_maps(self, masked):
         """
         Method to create 2 maps for flattening/remapping.
+        Uses masked image, where everything except ROI is black/0/cropped out.
         TODO:use difference between min and max
             and use the difference to estimate distance.
         TODO:(?) update this method(or code in general) to create the 2 maps
@@ -64,37 +65,45 @@ class DepthCorrection:
         TODO: make sure edge detection for top and bottom are done correct.
               double check what is happening.
         """
-        map_base_a = masked
-        map_base_b = cv2.rotate(masked, cv2.ROTATE_90_CLOCKWISE)
+        map_base = masked
+        map_base_rotated = cv2.rotate(masked, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-        edge_points_a = self.get_edge_points(map_base_a, True)
-        edge_points_b = self.get_edge_points(map_base_b, True)
+        edge_points = self.get_edge_points(map_base)
+        edge_points_rotated = self.get_edge_points(map_base_rotated)
 
-        pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end \
-            = self.distribute_by_shape(edge_points_a, edge_points_b)
+        pixel_map = GetModel(edge_points, map_base).estimated_map
+        pixel_map_rotated = GetModel(edge_points_rotated,
+                                     map_base_rotated).estimated_map
 
-        masked = cv2.cvtColor(masked, cv2.COLOR_GRAY2BGR)
-        masked = cv2.flip(masked, -1)
+        pixel_map_a = np.ndarray(pixel_map).astype(np.float_32)
+        pixel_map_b = cv2.rotate(np.array(pixel_map_rotated,
+                                          cv2.ROTATE_90_CLOCKWISE)
+                                 ).astype(np.float32)
+        #pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end \
+        #    = self.distribute_by_shape(edge_points_a, edge_points_b)
+
+        #masked = cv2.cvtColor(masked, cv2.COLOR_GRAY2BGR)
+        #masked = cv2.flip(masked, -1)
         # Seems to, in most cases fit edges better when flipped upside down?.
         # test with another video seems to confirm this.
-        pixel_map_a, masked = self.get_maps(True,
-                                            pixels_a_start, pixels_a_end,
-                                            pixels_b_start, pixels_b_end,
-                                            len(map_base_a[0]), masked,
-                                            (255, 255, 0), (0, 0, 255))
-        pixel_map_b, masked = self.get_maps(False,
-                                            pixels_b_start, pixels_b_end,
-                                            pixels_a_start, pixels_a_end,
-                                            len(map_base_b[0]), masked,
-                                            (255, 0, 255), (0, 255, 0))
-        masked = cv2.flip(masked, -1)
-        cv2.imwrite('points.png', masked)
+        #pixel_map_a, masked = self.get_maps(True,
+        #                                    pixels_a_start, pixels_a_end,
+        #                                    pixels_b_start, pixels_b_end,
+        #                                    len(map_base_a[0]), masked,
+        #                                    (255, 255, 0), (0, 0, 255))
+        #pixel_map_b, masked = self.get_maps(False,
+        #                                    pixels_b_start, pixels_b_end,
+        #                                    pixels_a_start, pixels_a_end,
+        #                                    len(map_base_b[0]), masked,
+        #                                    (255, 0, 255), (0, 255, 0))
+        #masked = cv2.flip(masked, -1)
+        #cv2.imwrite('points.png', masked)
 
         # Transform maps for remapping and return them.
-        pixel_map_a = np.array(pixel_map_a).astype(np.float32)
-        pixel_map_b = cv2.flip(cv2.rotate(np.array(pixel_map_b),
-                               cv2.ROTATE_90_COUNTERCLOCKWISE
-                                          ), 0).astype(np.float32)
+        #pixel_map_a = np.array(pixel_map_a).astype(np.float32)
+        #pixel_map_b = cv2.flip(cv2.rotate(np.array(pixel_map_b),
+        #                       cv2.ROTATE_90_COUNTERCLOCKWISE
+        #                                  ), 0).astype(np.float32)
 
         return pixel_map_a, pixel_map_b
 
@@ -253,14 +262,15 @@ class GetModel:
     TODO: Explore CNN?
     """
 
-    def __init__(self, indexes_start, indexes_end, image: np.ndarray):
+    def __init__(self, index_pairs: list, image: np.ndarray):
         """
         Create data frame and find values for ROI regression model.
         input(indexes_start, indexes_end) must be of equal length.
         image height must be of equal length as indexes.
         image must be rotated so that each row includes a start and stop value.
         """
-        self.indexes_start, self.indexes_end = indexes_start, indexes_end
+        self.indexes_start = [index_value[0] for index_value in index_pairs]
+        self.indexes_end = [index_value[1] for index_value in index_pairs]
         self.roi_data = image
         self.df = self.create_data_frame()
 
@@ -283,6 +293,7 @@ class GetModel:
             self.elastic_model_end = self.create_elastic()
         self.svr_model_start, \
             self.svr_model_end = self.create_svr()
+        print('ALL MODELS CREATED.\nTRYING TO FIND THE BEST...')
 
         self.final_model_start, \
             self.final_model_end = self.choose_best_model()
@@ -293,6 +304,22 @@ class GetModel:
             self.elastic_model_start,  self.elastic_model_end, \
             self.svr_model_start,  self.svr_model_end
         print(self.final_model_start,  self.final_model_end)
+        self.estimated_map = self.create_map()
+
+    def create_map(self):
+        """
+        Method to generate a two dimensional array of values within
+        models estimated start and end.
+        """
+        pixel_map = []
+        for idx, row in self.df.iterrows():
+            est_start = self.final_model_start.predict(
+                row.drop(columns=['values_start']))
+            est_end = self.final_model_end.predict(
+                row.drop(columns=['values_end']))
+            pixel_map.append(np.linspace(est_start, est_end,
+                                         len(self.roi_data[0])))
+        return pixel_map
 
     def create_data_frame(self):
         """
@@ -300,8 +327,8 @@ class GetModel:
         fields: index, height/width value, length of ROI(to add later on)
         """
         df = pd.DataFrame({
-            'idx': range(len(self.data)),
-            'roi_len': [self.find_ROI_length()],
+            'idx': range(len(self.roi_data)),
+            'roi_len': self.find_ROI_length(),
             'values_start': self.indexes_start,
             'values_end': self.indexes_end
         })
@@ -320,11 +347,11 @@ class GetModel:
         Return train and test sets for dependent and target.
         """
         X_train_start, X_test_start, y_train_start, y_test_start = \
-            train_test_split(self.df.drop(predict_columns[0]),
-                             self.df[predict_columns[0]],
+            train_test_split(self.df[['idx', 'roi_len', 'values_end']],
+                             self.df['values_start'],
                              test_size=0.2, random_state=101)
         X_train_end, X_test_end, y_train_end, y_test_end = \
-            train_test_split(self.df.drop(predict_columns[1]),
+            train_test_split(self.df[['idx', 'roi_len', 'values_start']],
                              self.df[predict_columns[1]],
                              test_size=0.2, random_state=101)
 
@@ -335,11 +362,12 @@ class GetModel:
         """
         Create evaluation with linear regression
         """
+        print("TEST LINEAR MODEL...")
         pipeline_linear = Pipeline(steps=[
             ('scale', StandardScaler()),
             ('poly', PolynomialFeatures()),
             ('regression', LinearRegression())])
-        param_grid = {'poly_degree': [1, 2, 3, 4]}  # Remove 3 and 4 later?
+        param_grid = {'poly__degree': [1, 2, 3, 4]}  # Remove 3 and 4 later?
 
         linear_pipe_grid = GridSearchCV(pipeline_linear, param_grid,
                                         cv=10, scoring='r2')
@@ -349,10 +377,12 @@ class GetModel:
                                           self.Y_train_end)
 
         best_start = \
-            linear_start.best_estimator_.fit(self.df.drop('values_start'),
+            linear_start.best_estimator_.fit(self.df[['idx', 'roi_len',
+                                                      'values_end']],
                                              self.df['values_start'])
         best_end = \
-            linear_end.best_estimator_.fit(self.df.drop('values_end'),
+            linear_end.best_estimator_.fit(self.df[['idx', 'roi_len',
+                                                   'values_start']],
                                            self.df['values_end'])
 
         return best_start, best_end
@@ -361,6 +391,7 @@ class GetModel:
         """
         Create evaluation with lasso regression
         """
+        print('TEST LASSO MODEL...')
         pipeline_lasso = Pipeline(steps=[
             ('scale', StandardScaler()),
             ('poly', PolynomialFeatures()),
@@ -379,10 +410,12 @@ class GetModel:
                                         self.Y_train_end)
 
         best_start = \
-            lasso_start.best_estimator_.fit(self.df.drop('values_start'),
+            lasso_start.best_estimator_.fit(self.df[['idx', 'roi_len',
+                                                    'values_end']],
                                             self.df['values_start'])
         best_end = \
-            lasso_end.best_estimator_.fit(self.df.drop('values_end'),
+            lasso_end.best_estimator_.fit(self.df[['idx', 'roi_len',
+                                                   'values_start']],
                                           self.df['values_end'])
 
         return best_start, best_end
@@ -391,6 +424,7 @@ class GetModel:
         """
         Create evaluation with ridge model
         """
+        print('TEST RIDGE MODEL')
         pipeline_ridge = Pipeline(steps=[
             ('scale', StandardScaler()),
             ('poly', PolynomialFeatures()),
@@ -407,10 +441,12 @@ class GetModel:
                                         self.Y_train_end)
 
         best_start = \
-            ridge_start.best_estimator_.fit(self.df.drop('values_start'),
+            ridge_start.best_estimator_.fit(self.df[['idx', 'roi_len',
+                                                    'values_end']],
                                             self.df['values_start'])
         best_end = \
-            ridge_end.best_estimator_.fit(self.df.drop('values_end'),
+            ridge_end.best_estimator_.fit(self.df[['idx', 'roi_len',
+                                                   'values_start']],
                                           self.df['values_end'])
 
         return best_start, best_end
@@ -419,6 +455,7 @@ class GetModel:
         """
         Create evaluation with elastic net model.
         """
+        print('TEST ELASTIC NET MODEL...')
         pipeline_elastic = Pipeline(steps=[
             ('scale', StandardScaler()),
             ('poly', PolynomialFeatures()),
@@ -426,7 +463,7 @@ class GetModel:
         param_grid = {'poly__degree': [1, 2, 3, 4],
                       'regression__alpha': [0.1, 0.5, 1, 5, 10, 50, 100],
                       'regression__l1_ratio': [.05, .1, .15, .2, .3, .5,
-                                               .7, .9, 95, 99, 1],
+                                               .7, .9, .95, .99, 1],
                       'regression__tol': [0.5]}
         elastic_pipe_grid = GridSearchCV(pipeline_elastic, param_grid,
                                          cv=10, scoring='r2')
@@ -437,10 +474,12 @@ class GetModel:
                                             self.Y_train_end)
 
         best_start = \
-            elastic_start.best_estimator_.fit(self.df.drop('values_start'),
+            elastic_start.best_estimator_.fit(self.df[['idx', 'roi_len',
+                                                       'values_end']],
                                               self.df['values_start'])
         best_end = \
-            elastic_end.best_estimator_.fit(self.df.drop('values_end'),
+            elastic_end.best_estimator_.fit(self.df[['idx', 'roi_len',
+                                                    'values_start']],
                                             self.df['values_end'])
 
         return best_start, best_end
@@ -449,6 +488,7 @@ class GetModel:
         """
         Create evaluation with SVR model
         """
+        print('TEST SVR MODEL...')
         pipeline_svr = Pipeline(steps=[
             ('scale', StandardScaler()),
             ('regression', SVR())])
@@ -466,10 +506,12 @@ class GetModel:
                                     self.Y_train_end)
 
         best_start = \
-            svr_start.best_estimator_.fit(self.df.drop('values_start'),
+            svr_start.best_estimator_.fit(self.df[['idx', 'roi_len',
+                                                   'values_end']],
                                           self.df['values_start'])
         best_end = \
-            svr_end.best_estimator_.fit(self.df.drop('values_end'),
+            svr_end.best_estimator_.fit(self.df[['idx', 'roi_len',
+                                                 'values_start']],
                                         self.df['values_end'])
 
         return best_start, best_end
