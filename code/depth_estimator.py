@@ -184,7 +184,8 @@ class DepthCorrection:
         model.fit(x_poly, y)
 
         y_fit = model.predict(x_poly)
-        print(y_fit)
+        print(y)
+        print(len(y), len(y_fit))
         input('...')
         return y_fit
 
