@@ -64,14 +64,18 @@ class DepthCorrection:
         TODO: make sure edge detection for top and bottom are done correct.
               double check what is happening.
         """
-        map_base_a = masked
-        map_base_b = cv2.rotate(masked, cv2.ROTATE_90_CLOCKWISE)
+        # ***_rotated is edges of top to bottom.
+        map_base = masked
+        map_base_rotated = cv2.rotate(masked, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-        edge_points_a = self.get_edge_points(map_base_a, True)
-        edge_points_b = self.get_edge_points(map_base_b, True)
+        edge_points = self.get_edge_points(map_base)
+        edge_points_rotated = self.get_edge_points(map_base_rotated)
+
+        #edge_model_start, edge_model_stop = GetModel()
+        #edge_model_rotated_start, edge_model_rotated_stop = GetModel()
 
         pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end \
-            = self.distribute_by_shape(edge_points_a, edge_points_b)
+            = self.distribute_by_shape(edge_points, edge_points_rotated)
 
         masked = cv2.cvtColor(masked, cv2.COLOR_GRAY2BGR)
         masked = cv2.flip(masked, -1)
@@ -80,12 +84,12 @@ class DepthCorrection:
         pixel_map_a, masked = self.get_maps(True,
                                             pixels_a_start, pixels_a_end,
                                             pixels_b_start, pixels_b_end,
-                                            len(map_base_a[0]), masked,
+                                            len(map_base[0]), masked,
                                             (255, 255, 0), (0, 0, 255))
         pixel_map_b, masked = self.get_maps(False,
                                             pixels_b_start, pixels_b_end,
                                             pixels_a_start, pixels_a_end,
-                                            len(map_base_b[0]), masked,
+                                            len(map_base_rotated[0]), masked,
                                             (255, 0, 255), (0, 255, 0))
         masked = cv2.flip(masked, -1)
         cv2.imwrite('points.png', masked)
@@ -93,7 +97,7 @@ class DepthCorrection:
         # Transform maps for remapping and return them.
         pixel_map_a = np.array(pixel_map_a).astype(np.float32)
         pixel_map_b = cv2.flip(cv2.rotate(np.array(pixel_map_b),
-                               cv2.ROTATE_90_COUNTERCLOCKWISE
+                               cv2.ROTATE_90_CLOCKWISE
                                           ), 0).astype(np.float32)
 
         return pixel_map_a, pixel_map_b
@@ -101,8 +105,9 @@ class DepthCorrection:
     def get_edge_points(self, map_base: np.ndarray,
                         reverse: bool = False) -> list:
         """
+        returns [list of (min/start, max/end) for each row.]
         indexes of where ROI of each row of the map start and end.
-        Return as list of pairs for each row.
+        Return as list of pairs for each row, starting with lowest value.
         """
         edge_points = []
         for pixel_row in map_base:
@@ -110,33 +115,37 @@ class DepthCorrection:
             if len(roi) < 1:
                 edge_points.append(edge_points[-1])
             else:
-                edge_points.append((max(roi), min(roi)))
+                edge_points.append((min(roi), max(roi)))
         if reverse:
             edge_points = [pair[::-1] for pair in edge_points]
         return edge_points
 
-    def distribute_by_shape(self, edge_points_a, edge_points_b):
+    def distribute_by_shape(self, edge_points, edge_points_rotated):
         """
         estimate the four sides of ROI
         """
         # Get lists of min\max indexes,
         # and adjust them to fit to first or second grade equations
         # A
-        pixels_a_start = [edge_point[0] for edge_point in edge_points_a]
-        pixels_a_end = [edge_point[1] for edge_point in edge_points_a]
+        pixels_start = [edge_point[0] for edge_point in edge_points]
+        pixels_end = [edge_point[1] for edge_point in edge_points]
         # B
-        pixels_b_start = [edge_point[0] for edge_point in edge_points_b]
-        pixels_b_end = [edge_point[1] for edge_point in edge_points_b]
+        pixels_r_start = [edge_point[0] for edge_point in edge_points_rotated]
+        pixels_r_end = [edge_point[1] for edge_point in edge_points_rotated]
 
         pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end\
-            = self.normalize_values(pixels_a_start, pixels_a_end,
-                                    pixels_b_start, pixels_b_end)
+            = self.normalize_values(pixels_start, pixels_end,
+                                    pixels_r_start, pixels_r_end)
 
         return pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end
 
     def normalize_values(self,
                          pixels_a_start, pixels_a_end,
                          pixels_b_start, pixels_b_end) -> list:
+        """
+        Returns the start and end values for 'normal' image first,
+        Returns values for image rotated  90 degrees second
+        """
         to_best_fit = []
         for values in [pixels_a_start, pixels_a_end,
                        pixels_b_start, pixels_b_end]:
@@ -147,9 +156,9 @@ class DepthCorrection:
             values[values > median+std*2] = median+std
             to_best_fit.append(values)
 
-        pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end\
+        pixels_start, pixels_end, pixels_r_start, pixels_r_end\
             = self.choose_best_fit(to_best_fit)
-        return pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end
+        return pixels_start, pixels_end, pixels_r_start, pixels_r_end
 
     def fit_to_line(self, y):
         x = np.arange(len(y)).reshape(-1, 1)
@@ -175,6 +184,8 @@ class DepthCorrection:
         model.fit(x_poly, y)
 
         y_fit = model.predict(x_poly)
+        print(y_fit)
+        input('...')
         return y_fit
 
     def choose_best_fit(self, pixel_values):
@@ -253,14 +264,15 @@ class GetModel:
     TODO: Explore CNN?
     """
 
-    def __init__(self, indexes_start, indexes_end, image: np.ndarray):
+    def __init__(self, index_pairs, image: np.ndarray):
         """
         Create data frame and find values for ROI regression model.
         input(indexes_start, indexes_end) must be of equal length.
         image height must be of equal length as indexes.
         image must be rotated so that each row includes a start and stop value.
         """
-        self.indexes_start, self.indexes_end = indexes_start, indexes_end
+        self.indexes_start = [value[0] for value in index_pairs]
+        self.indexes_end = [value[1] for value in index_pairs]
         self.roi_data = image
         self.df = self.create_data_frame()
 
@@ -293,7 +305,14 @@ class GetModel:
             self.elastic_model_start,  self.elastic_model_end, \
             self.svr_model_start,  self.svr_model_end
         print(self.final_model_start,  self.final_model_end)
+        self.value_map = self.make_map_with_models(self)
 
+    def  make_map_with_best_modes(self):
+        """
+        create a value map using the models estimated to do best.
+        """
+
+    
     def create_data_frame(self):
         """
         Convert the np.ndarray to pandas data frame
