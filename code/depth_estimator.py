@@ -75,10 +75,14 @@ class DepthCorrection:
         pixel_map_rotated = GetModel(edge_points_rotated,
                                      map_base_rotated).estimated_map
 
-        pixel_map_a = np.ndarray(pixel_map).astype(np.float_32)
-        pixel_map_b = cv2.rotate(np.array(pixel_map_rotated,
-                                          cv2.ROTATE_90_CLOCKWISE)
-                                 ).astype(np.float32)
+        for row in pixel_map:
+            if len(row) != 385:
+                print(f'PROBLEM???({len(row)})')
+        print(len(pixel_map))
+        print('first OK!')
+        pixel_map_a = np.array(pixel_map).astype(np.float32)
+        pixel_map_b = np.array(pixel_map_rotated).astype(np.float32)
+        pixel_map_b = cv2.rotate(pixel_map_b, cv2.ROTATE_90_CLOCKWISE)
         #pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end \
         #    = self.distribute_by_shape(edge_points_a, edge_points_b)
 
@@ -119,7 +123,7 @@ class DepthCorrection:
             if len(roi) < 1:
                 edge_points.append(edge_points[-1])
             else:
-                edge_points.append((max(roi), min(roi)))
+                edge_points.append((min(roi), max(roi)))
         if reverse:
             edge_points = [pair[::-1] for pair in edge_points]
         return edge_points
@@ -233,7 +237,7 @@ class DepthCorrection:
         pixel_map = []
         for row_idx, (start, stop) in enumerate(zip(pixels_start,
                                                     pixels_end)):
-            pixel_map.append(np.linspace(start, stop, len_active))
+            pixel_map.append((np.linspace(start, stop, len_active)))
             if first_value:
                 location_start = (int(start), row_idx)
                 location_stop = (int(stop), row_idx)
@@ -298,11 +302,6 @@ class GetModel:
         self.final_model_start, \
             self.final_model_end = self.choose_best_model()
 
-        del self.linear_model_start, self.linear_model_end, \
-            self.lasso_model_start, self.lasso_model_end, \
-            self.ridge_model_start,  self.ridge_model_end, \
-            self.elastic_model_start,  self.elastic_model_end, \
-            self.svr_model_start,  self.svr_model_end
         print(self.final_model_start,  self.final_model_end)
         self.estimated_map = self.create_map()
 
@@ -312,13 +311,14 @@ class GetModel:
         models estimated start and end.
         """
         pixel_map = []
-        for idx, row in self.df.iterrows():
-            est_start = self.final_model_start.predict(
-                row.drop(columns=['values_start']))
-            est_end = self.final_model_end.predict(
-                row.drop(columns=['values_end']))
-            pixel_map.append(np.linspace(est_start, est_end,
-                                         len(self.roi_data[0])))
+        est_starts = self.final_model_start.predict(
+            self.df[['idx', 'roi_len', 'values_end']])
+        est_ends = self.final_model_end.predict(
+            self.df[['idx', 'roi_len', 'values_start']])
+        print(len(est_ends),  len(est_starts))
+        for est_start, est_end in zip(est_starts, est_ends):
+            pixel_map.append([[value] for value in np.linspace(
+                est_start, est_end, len(self.roi_data[0]))])
         return pixel_map
 
     def create_data_frame(self):
@@ -371,15 +371,17 @@ class GetModel:
 
         linear_pipe_grid = GridSearchCV(pipeline_linear, param_grid,
                                         cv=10, scoring='r2')
+        linear_pipe_grid2 = GridSearchCV(pipeline_linear, param_grid,
+                                         cv=10, scoring='r2')
         linear_start = linear_pipe_grid.fit(self.X_train_start,
                                             self.Y_train_start)
-        linear_end = linear_pipe_grid.fit(self.X_train_end,
-                                          self.Y_train_end)
+        linear_end = linear_pipe_grid2.fit(self.X_train_end,
+                                           self.Y_train_end)
 
         best_start = \
-            linear_start.best_estimator_.fit(self.df[['idx', 'roi_len',
-                                                      'values_end']],
-                                             self.df['values_start'])
+            linear_start.best_estimator_.fit(X=self.df[['idx', 'roi_len',
+                                                       'values_end']],
+                                             y=self.df['values_start'])
         best_end = \
             linear_end.best_estimator_.fit(self.df[['idx', 'roi_len',
                                                    'values_start']],
@@ -404,15 +406,17 @@ class GetModel:
 
         lasso_pipe_grid = GridSearchCV(pipeline_lasso, param_grid,
                                        cv=10, scoring='r2')
+        lasso_pipe_grid2 = GridSearchCV(pipeline_lasso, param_grid,
+                                        cv=10, scoring='r2')
         lasso_start = lasso_pipe_grid.fit(self.X_train_start,
                                           self.Y_train_start)
-        lasso_end = lasso_pipe_grid.fit(self.X_train_end,
-                                        self.Y_train_end)
+        lasso_end = lasso_pipe_grid2.fit(self.X_train_end,
+                                         self.Y_train_end)
 
         best_start = \
-            lasso_start.best_estimator_.fit(self.df[['idx', 'roi_len',
-                                                    'values_end']],
-                                            self.df['values_start'])
+            lasso_start.best_estimator_.fit(X=self.df[['idx', 'roi_len',
+                                                     'values_end']],
+                                            y=self.df['values_start'])
         best_end = \
             lasso_end.best_estimator_.fit(self.df[['idx', 'roi_len',
                                                    'values_start']],
@@ -434,11 +438,13 @@ class GetModel:
                       'regression__tol': [0.5]}
         ridge_pipe_grid = GridSearchCV(pipeline_ridge, param_grid,
                                        cv=10, scoring='r2')
+        ridge_pipe_grid2 = GridSearchCV(pipeline_ridge, param_grid,
+                                        cv=10, scoring='r2')
 
         ridge_start = ridge_pipe_grid.fit(self.X_train_start,
                                           self.Y_train_start)
-        ridge_end = ridge_pipe_grid.fit(self.X_train_end,
-                                        self.Y_train_end)
+        ridge_end = ridge_pipe_grid2.fit(self.X_train_end,
+                                         self.Y_train_end)
 
         best_start = \
             ridge_start.best_estimator_.fit(self.df[['idx', 'roi_len',
@@ -467,11 +473,13 @@ class GetModel:
                       'regression__tol': [0.5]}
         elastic_pipe_grid = GridSearchCV(pipeline_elastic, param_grid,
                                          cv=10, scoring='r2')
+        elastic_pipe_grid2 = GridSearchCV(pipeline_elastic, param_grid,
+                                          cv=10, scoring='r2')
 
         elastic_start = elastic_pipe_grid.fit(self.X_train_start,
                                               self.Y_train_start)
-        elastic_end = elastic_pipe_grid.fit(self.X_train_end,
-                                            self.Y_train_end)
+        elastic_end = elastic_pipe_grid2.fit(self.X_train_end,
+                                             self.Y_train_end)
 
         best_start = \
             elastic_start.best_estimator_.fit(self.df[['idx', 'roi_len',
@@ -492,18 +500,20 @@ class GetModel:
         pipeline_svr = Pipeline(steps=[
             ('scale', StandardScaler()),
             ('regression', SVR())])
-        param_grid = {'regression__C': [0.001, 0.01, 0.1, 0.5, 5, 10, 100],
+        param_grid = {'regression__C': [0.001, 0.1, 0.5, 5, 100],
                       'regression__kernel': ['linear', 'poly', 'rbf'],
-                      'regression__degree': [2, 3, 4, 5, 6],
-                      'regression__epsilon': [0, 0.01, 0.1, 0.5, 1, 2],
-                      'regression__gamma': ['scale', 'auto']}
+                      'regression__degree': [1, 2],  # , 3, 4
+                      'regression__epsilon': [0, 0.1, 0.5, 2],
+                      'regression__gamma': ['scale']}   # , 'auto'
         svr_pipe_grid = GridSearchCV(pipeline_svr, param_grid,
-                                     cv=10, scoring='r2')
+                                     cv=5, scoring='r2')
+        svr_pipe_grid2 = GridSearchCV(pipeline_svr, param_grid,
+                                     cv=5, scoring='r2')
 
         svr_start = svr_pipe_grid.fit(self.X_train_start,
                                       self.Y_train_start)
-        svr_end = svr_pipe_grid.fit(self.X_train_end,
-                                    self.Y_train_end)
+        svr_end = svr_pipe_grid2.fit(self.X_train_end,
+                                     self.Y_train_end)
 
         best_start = \
             svr_start.best_estimator_.fit(self.df[['idx', 'roi_len',
@@ -520,8 +530,8 @@ class GetModel:
         """
         Compare performance of all models and choose the best.
         """
-        top_r2_start = [-1, None]
-        top_r2_end = [-1, None]
+        top_r2_start = [-1000, None]
+        top_r2_end = [-1000, None]
         start_models = [self.linear_model_start, self.lasso_model_start,
                         self.ridge_model_start, self.elastic_model_start,
                         self.svr_model_start]
@@ -531,7 +541,7 @@ class GetModel:
 
         for start_model, end_model in zip(start_models, end_models):
             test_start = start_model.predict(self.X_test_start)
-            r2_start = r2_score(y_true=self.Y_test_start,
+            r2_start = r2_score(y_true=self.Y_test_end,
                                 y_pred=test_start)
             if r2_start > top_r2_start[0]:
                 top_r2_start[0] = r2_start
@@ -540,8 +550,14 @@ class GetModel:
             test_end = end_model.predict(self.X_test_end)
             r2_end = r2_score(y_true=self.Y_test_end,
                               y_pred=test_end)
+
             if r2_end > top_r2_end[0]:
                 top_r2_end[0] = r2_end
                 top_r2_end[1] = end_model
+        for model_start,  model_end in zip(start_models, end_models):
+            if model_start != top_r2_start[1]:
+                del model_start
+            if model_end != top_r2_end[1]:
+                del model_end
 
         return top_r2_start[1], top_r2_end[1]
