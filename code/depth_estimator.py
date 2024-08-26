@@ -383,7 +383,7 @@ class GetModel:
             ('scale', StandardScaler()),
             ('poly', PolynomialFeatures()),
             ('regression', LinearRegression())])
-        param_grid = {'poly__degree': [1, 2, 3, 4]}  # Remove 3 and 4 later?
+        param_grid = {'poly__degree': [1, 2]}  # Remove 3 and 4 later?
 
         linear_pipe_grid = GridSearchCV(pipeline_linear, param_grid,
                                         cv=10, scoring='r2')
@@ -402,7 +402,8 @@ class GetModel:
             linear_end.best_estimator_.fit(self.df[['idx', 'roi_len',
                                                    'values_start']],
                                            self.df['values_end'])
-
+        print(type(best_start))
+        print(type(best_end))
         return best_start, best_end
 
     def create_lasso(self):
@@ -414,7 +415,7 @@ class GetModel:
             ('scale', StandardScaler()),
             ('poly', PolynomialFeatures()),
             ('regression', Lasso())])
-        param_grid = {'poly__degree': [1, 2, 3, 4],
+        param_grid = {'poly__degree': [1, 2],
                       'regression__alpha': [0.10, 0.20, 0.30, 0.40, 0.50,
                                             0.60, 0.70, 0.80, 0.90,
                                             1, 5, 10, 50, 75, 100],
@@ -449,7 +450,7 @@ class GetModel:
             ('scale', StandardScaler()),
             ('poly', PolynomialFeatures()),
             ('regression', Ridge())])
-        param_grid = {'poly__degree': [1, 2, 3, 4],
+        param_grid = {'poly__degree': [1, 2],
                       'regression__alpha': [0.1, 0.5, 1, 5, 10, 50, 100],
                       'regression__tol': [0.5]}
         ridge_pipe_grid = GridSearchCV(pipeline_ridge, param_grid,
@@ -482,7 +483,7 @@ class GetModel:
             ('scale', StandardScaler()),
             ('poly', PolynomialFeatures()),
             ('regression', ElasticNet())])
-        param_grid = {'poly__degree': [1, 2, 3, 4],
+        param_grid = {'poly__degree': [1, 2],
                       'regression__alpha': [0.1, 0.5, 1, 5, 10, 50, 100],
                       'regression__l1_ratio': [.05, .1, .15, .2, .3, .5,
                                                .7, .9, .95, .99, 1],
@@ -546,8 +547,8 @@ class GetModel:
         """
         Compare performance of all models and choose the best.
         """
-        top_r2_start = [-1000, None]
-        top_r2_end = [-1000, None]
+        top_r2_start = [-1000000, None]
+        top_r2_end = [-1000000, None]
         start_models = [self.linear_model_start, self.lasso_model_start,
                         self.ridge_model_start, self.elastic_model_start,
                         self.svr_model_start]
@@ -570,6 +571,11 @@ class GetModel:
             if r2_end > top_r2_end[0]:
                 top_r2_end[0] = r2_end
                 top_r2_end[1] = end_model
+        if top_r2_start[1] is None or top_r2_end[1] is None:
+            print('ONE FIT FAILED?')
+            print(f'start_model score: {top_r2_start[0]}')
+            print(f'End model_score: {top_r2_end[0]}')
+            input('...')
         for model_start,  model_end in zip(start_models, end_models):
             if model_start != top_r2_start[1]:
                 del model_start
