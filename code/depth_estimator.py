@@ -66,7 +66,6 @@ class DepthCorrection:
               double check what is happening.
         """
 
-
         map_base = masked
         map_base_rotated = cv2.rotate(masked, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
@@ -273,6 +272,7 @@ class GetModel:
     Temporary(?) class to test different
     edge detection regressions
     TODO: Explore CNN?
+    TODO: Manage map creation error when no model found.
     """
 
     def __init__(self, index_pairs: list, image: np.ndarray):
