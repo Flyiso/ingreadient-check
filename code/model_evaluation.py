@@ -2,6 +2,7 @@
 Class that evaluate and create an image for easy model evaluation.
 """
 import numpy as np
+import cv2
 from sklearn.pipeline import Pipeline
 
 
@@ -22,7 +23,8 @@ class EvaluationImages:
                   start_model_horizontal: Pipeline,
                   end_model_horizontal: Pipeline,
                   start_model_vertical: Pipeline,
-                  end_model_vertical: Pipeline):
+                  end_model_vertical: Pipeline,
+                  model_points: list):
         """
         Use the re-mapping information to create evaluation image.
 
@@ -42,12 +44,9 @@ class EvaluationImages:
         evaluating where ROI starts. (this is for the image rotated)
         :param end_model_vertical: The model used when
         evaluating where ROI ends. (this is for the image rotated)
+        :param model_points: List of list, where all predictions are.
         """
-        img_w_lines = self.draw_evaluations(pre_remapping,
-                                            start_model_horizontal,
-                                            end_model_horizontal,
-                                            start_model_vertical,
-                                            end_model_vertical)
+        img_w_lines = self.draw_evaluations(pre_remapping, model_points)
         collage = self.create_collage(masked_img, img_w_lines,
                                       pre_remapping, post_remapping,
                                       horizontal_map, vertical_map,
@@ -59,33 +58,20 @@ class EvaluationImages:
 
     @staticmethod
     def draw_evaluations(img: np.ndarray,
-                         start_model_horizontal: Pipeline,
-                         end_model_horizontal: Pipeline,
-                         start_model_vertical: Pipeline,
-                         end_model_vertical: Pipeline) -> np.ndarray:
+                         model_points: list) -> np.ndarray:
         """
         Predict and mark predictions on an image.
 
         :param img:
         Numpy array to draw the detected boundaries on.
-        :param start_model_horizontal:
-        The model used when evaluating where ROI starts.
-        :param end_model_horizontal:
-        The model used when evaluating where ROI ends.
-        :param start_model_vertical:
-        The model used when evaluating where ROI starts.
-        (this is for the image rotated)
-        :param end_model_vertical:
-        The model used when evaluating where ROI ends.
-        (this is for the image rotated)
-        :return:
-        the input image, with predicted edges drawn.
+        :param model_points: List of list, where all predictions are.
+        :return: The input image, with predicted edges drawn.
         The model for start_horizontal is Orange.
         The model for end_horizontal is Red.
         The model for start_vertical is Purple.
         The model for end_vertical is Green
         """
-        pass
+        start_a, end_a, start_b, end_b = model_points
 
     @staticmethod
     def create_collage(masked_img: np.ndarray, img_lines: np.ndarray,

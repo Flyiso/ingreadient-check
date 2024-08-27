@@ -107,6 +107,8 @@ class DepthCorrection:
                             model_class1.final_model_end,
                             model_class2.final_model_start,
                             model_class2.final_model_end])
+        self.points = [model_class1.est_starts, model_class1.est_ends,
+                       model_class2.est_starts, model_class2.est_ends]
         #pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end \
         #    = self.distribute_by_shape(edge_points_a, edge_points_b)
 
@@ -346,12 +348,12 @@ class GetModel:
         models estimated start and end.
         """
         pixel_map = []
-        est_starts = self.final_model_start.predict(
+        self.est_starts = self.final_model_start.predict(
             self.df[['idx', 'roi_len']])
-        est_ends = self.final_model_end.predict(
+        self.est_ends = self.final_model_end.predict(
             self.df[['idx', 'roi_len']])
-        print(len(est_ends),  len(est_starts))
-        for est_start, est_end in zip(est_starts, est_ends):
+        print(len(self.est_ends),  len(self.est_starts))
+        for est_start, est_end in zip(self.est_starts, self.est_ends):
             pixel_map.append([[value] for value in np.linspace(
                 est_start, est_end, len(self.roi_data[0]))])
         return pixel_map
