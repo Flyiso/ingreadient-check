@@ -3,6 +3,7 @@ File that collect all image enhancement, manipulation, et cetera.
 contains methods for segmentation of ROI, corrections of perspective,
 correction of lightning conditions and more
 """
+from model_evaluation import EvaluationImages
 from depth_estimator import DepthCorrection
 from groundingdino.util.inference import Model
 from segment_anything import sam_model_registry, SamPredictor
@@ -197,6 +198,7 @@ class ManageFrames:
         interval = len(frames)//num
         selected_frames = []
         self.set_threshold_values(frames[0], self.find_text(frames[0]))
+        self.evaluation_class = EvaluationImages()
         for frame_id, frame in enumerate(frames):
             if frame_id % interval == 0:
                 frame = self.find_label(frame)
