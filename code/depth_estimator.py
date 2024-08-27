@@ -635,7 +635,19 @@ class EvaluationImages:
         The model used when evaluating where ROI ends.
         (this is for the image rotated)
         """
-        pass
+        img_w_lines = self.draw_evaluations(pre_remapping,
+                                            start_model_horizontal,
+                                            end_model_horizontal,
+                                            start_model_vertical,
+                                            end_model_vertical)
+        collage = self.create_collage(masked_img, img_w_lines,
+                                      pre_remapping, post_remapping,
+                                      horizontal_map, vertical_map,
+                                      start_model_horizontal,
+                                      end_model_horizontal,
+                                      start_model_vertical,
+                                      end_model_vertical)
+        self.images.append(collage)
 
     @staticmethod
     def draw_evaluations(img: np.ndarray,
