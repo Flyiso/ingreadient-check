@@ -25,17 +25,28 @@ class DepthCorrection:
     method just correct by values?
     """
     def __init__(self, frame: np.ndarray) -> None:
+        """
+        Attempt to match left and right edges of ROI to ml model.
+
+        :param frame: numpy array of the image to create map from.
+        """
+        self.models = []  # store all models here to evaluate
         masked_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame_bgra = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
         self.correct_image(frame=frame_bgra, masked=masked_img)
+        for model in self.models:
+            for model2 in model:
+                print(model2)
+                print('-')
+            print(':::::::::::::::::::::::::::::::::::')
 
     def correct_image(self, frame: np.ndarray,
                       masked: np.ndarray) -> np.ndarray:
         """
-        use estimated size to correct
-        the images shape and perspective
-        frame: BGRA image
-        depth_mask: GRAYSCALE image
+        use estimated size to correct the images shape and perspective
+
+        :param frame: BGRA image
+        :param masked: GRAYSCALE image
         """
         map_a, map_b = self.get_flattening_maps(masked)
         cv2.imwrite('map_b_vertical.png', map_b)
@@ -72,9 +83,11 @@ class DepthCorrection:
         edge_points = self.get_edge_points(map_base)
         edge_points_rotated = self.get_edge_points(map_base_rotated)
 
-        pixel_map = GetModel(edge_points, map_base).estimated_map
-        pixel_map_rotated = GetModel(edge_points_rotated,
-                                     map_base_rotated).estimated_map
+        model_class1 = GetModel(edge_points, map_base)
+        pixel_map = model_class1.estimated_map
+        model_class2 = GetModel(edge_points_rotated,
+                                map_base_rotated)
+        pixel_map_rotated = model_class2.estimated_map
         for row in pixel_map:
             if len(row) != 385:
                 print(f'PROBLEM???({len(row)})')
@@ -83,6 +96,10 @@ class DepthCorrection:
         pixel_map_a = np.array(pixel_map).astype(np.float32)
         pixel_map_b = np.array(pixel_map_rotated).astype(np.float32)
         pixel_map_b = cv2.rotate(pixel_map_b, cv2.ROTATE_90_CLOCKWISE)
+        self.models.append([model_class1.final_model_start,
+                            model_class1.final_model_end,
+                            model_class2.final_model_start,
+                            model_class2.final_model_end])
         #pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end \
         #    = self.distribute_by_shape(edge_points_a, edge_points_b)
 
@@ -305,8 +322,8 @@ class GetModel:
             self.ridge_model_end = self.create_ridge()
         self.elastic_model_start, \
             self.elastic_model_end = self.create_elastic()
-        self.svr_model_start, \
-            self.svr_model_end = self.create_svr()
+        #self.svr_model_start, \
+        #    self.svr_model_end = self.create_svr()
         print('ALL MODELS CREATED.\nTRYING TO FIND THE BEST...')
 
         self.final_model_start, \
@@ -323,9 +340,9 @@ class GetModel:
         """
         pixel_map = []
         est_starts = self.final_model_start.predict(
-            self.df[['idx', 'roi_len', 'values_end']])
+            self.df[['idx', 'roi_len']])
         est_ends = self.final_model_end.predict(
-            self.df[['idx', 'roi_len', 'values_start']])
+            self.df[['idx', 'roi_len']])
         print(len(est_ends),  len(est_starts))
         for est_start, est_end in zip(est_starts, est_ends):
             pixel_map.append([[value] for value in np.linspace(
@@ -363,11 +380,11 @@ class GetModel:
         Return train and test sets for dependent and target.
         """
         X_train_start, X_test_start, y_train_start, y_test_start = \
-            train_test_split(self.df[['idx', 'roi_len', 'values_end']],
+            train_test_split(self.df[['idx', 'roi_len']],
                              self.df['values_start'],
                              test_size=0.2, random_state=101)
         X_train_end, X_test_end, y_train_end, y_test_end = \
-            train_test_split(self.df[['idx', 'roi_len', 'values_start']],
+            train_test_split(self.df[['idx', 'roi_len']],
                              self.df[predict_columns[1]],
                              test_size=0.2, random_state=101)
 
@@ -395,15 +412,11 @@ class GetModel:
                                            self.Y_train_end)
 
         best_start = \
-            linear_start.best_estimator_.fit(X=self.df[['idx', 'roi_len',
-                                                       'values_end']],
+            linear_start.best_estimator_.fit(X=self.df[['idx', 'roi_len']],
                                              y=self.df['values_start'])
         best_end = \
-            linear_end.best_estimator_.fit(self.df[['idx', 'roi_len',
-                                                   'values_start']],
+            linear_end.best_estimator_.fit(self.df[['idx', 'roi_len']],
                                            self.df['values_end'])
-        print(type(best_start))
-        print(type(best_end))
         return best_start, best_end
 
     def create_lasso(self):
@@ -431,12 +444,10 @@ class GetModel:
                                          self.Y_train_end)
 
         best_start = \
-            lasso_start.best_estimator_.fit(X=self.df[['idx', 'roi_len',
-                                                     'values_end']],
+            lasso_start.best_estimator_.fit(X=self.df[['idx', 'roi_len']],
                                             y=self.df['values_start'])
         best_end = \
-            lasso_end.best_estimator_.fit(self.df[['idx', 'roi_len',
-                                                   'values_start']],
+            lasso_end.best_estimator_.fit(self.df[['idx', 'roi_len']],
                                           self.df['values_end'])
 
         return best_start, best_end
@@ -464,12 +475,10 @@ class GetModel:
                                          self.Y_train_end)
 
         best_start = \
-            ridge_start.best_estimator_.fit(self.df[['idx', 'roi_len',
-                                                    'values_end']],
+            ridge_start.best_estimator_.fit(self.df[['idx', 'roi_len']],
                                             self.df['values_start'])
         best_end = \
-            ridge_end.best_estimator_.fit(self.df[['idx', 'roi_len',
-                                                   'values_start']],
+            ridge_end.best_estimator_.fit(self.df[['idx', 'roi_len']],
                                           self.df['values_end'])
 
         return best_start, best_end
@@ -499,12 +508,10 @@ class GetModel:
                                              self.Y_train_end)
 
         best_start = \
-            elastic_start.best_estimator_.fit(self.df[['idx', 'roi_len',
-                                                       'values_end']],
+            elastic_start.best_estimator_.fit(self.df[['idx', 'roi_len']],
                                               self.df['values_start'])
         best_end = \
-            elastic_end.best_estimator_.fit(self.df[['idx', 'roi_len',
-                                                    'values_start']],
+            elastic_end.best_estimator_.fit(self.df[['idx', 'roi_len']],
                                             self.df['values_end'])
 
         return best_start, best_end
@@ -517,15 +524,15 @@ class GetModel:
         pipeline_svr = Pipeline(steps=[
             ('scale', StandardScaler()),
             ('regression', SVR())])
-        param_grid = {'regression__C': [0.001, 0.1, 0.5, 5, 100],
+        param_grid = {'regression__C': [0.001, 0.1, 0.5, 5],
                       'regression__kernel': ['linear', 'poly', 'rbf'],
                       'regression__degree': [1, 2],  # , 3, 4
-                      'regression__epsilon': [0, 0.1, 0.5, 2],
-                      'regression__gamma': ['scale']}   # , 'auto'
+                      'regression__epsilon': [0, 0.1, 0.2,  0.5, 2],
+                      'regression__gamma': ['scale', 'auto']}   # , 'auto'
         svr_pipe_grid = GridSearchCV(pipeline_svr, param_grid,
                                      cv=5, scoring='r2')
         svr_pipe_grid2 = GridSearchCV(pipeline_svr, param_grid,
-                                     cv=5, scoring='r2')
+                                      cv=5, scoring='r2')
 
         svr_start = svr_pipe_grid.fit(self.X_train_start,
                                       self.Y_train_start)
@@ -533,12 +540,10 @@ class GetModel:
                                      self.Y_train_end)
 
         best_start = \
-            svr_start.best_estimator_.fit(self.df[['idx', 'roi_len',
-                                                   'values_end']],
+            svr_start.best_estimator_.fit(self.df[['idx', 'roi_len']],
                                           self.df['values_start'])
         best_end = \
-            svr_end.best_estimator_.fit(self.df[['idx', 'roi_len',
-                                                 'values_start']],
+            svr_end.best_estimator_.fit(self.df[['idx', 'roi_len']],
                                         self.df['values_end'])
 
         return best_start, best_end
@@ -550,11 +555,11 @@ class GetModel:
         top_r2_start = [-1000000, None]
         top_r2_end = [-1000000, None]
         start_models = [self.linear_model_start, self.lasso_model_start,
-                        self.ridge_model_start, self.elastic_model_start,
-                        self.svr_model_start]
+                        self.ridge_model_start, self.elastic_model_start]#,
+                        #self.svr_model_start]
         end_models = [self.linear_model_end, self.lasso_model_end,
-                      self.ridge_model_end, self.elastic_model_end,
-                      self.svr_model_end]
+                      self.ridge_model_end, self.elastic_model_end]#,
+                      #self.svr_model_end]
 
         for start_model, end_model in zip(start_models, end_models):
             test_start = start_model.predict(self.X_test_start)
@@ -582,4 +587,114 @@ class GetModel:
             if model_end != top_r2_end[1]:
                 del model_end
 
+        print(top_r2_start)
+        print(top_r2_end)
         return top_r2_start[1], top_r2_end[1]
+
+
+class EvaluationImages:
+    """
+    Temporary class for evaluation purposes.
+    Class to collect and display data on frame map creation.
+    For each image used in remapping, the class collect information
+    on maps used, ROI img, img and the models used. That information
+    is then displayed to simplify model evaluation.
+    """
+    def __init__(self) -> None:
+        self.images = []
+
+    def add_image(self, masked_img: np.ndarray,
+                  pre_remapping: np.ndarray, post_remapping: np.ndarray,
+                  horizontal_map: np.ndarray, vertical_map: np.ndarray,
+                  start_model_horizontal: Pipeline,
+                  end_model_horizontal: Pipeline,
+                  start_model_vertical: Pipeline,
+                  end_model_vertical: Pipeline):
+        """
+        Use the re-mapping information to create evaluation image.
+
+        :param masked_img:
+        Masked version of the image being remapped,
+        where non roi sections are black.
+        :param pre_remapping:
+        original image
+        :param post_remapping:
+        Image after remapping.
+        :param horizontal_map:
+        Image visualizing the remapping in horizontal direction. Grayscale.
+        :param vertical_map:
+        Image visualizing the remapping in vertical direction. Grayscale.
+        :param start_model_horizontal:
+        The model used when evaluating where ROI starts.
+        :param end_model_horizontal:
+        The model used when evaluating where ROI ends.
+        :param start_model_vertical:
+        The model used when evaluating where ROI starts.
+        (this is for the image rotated)
+        :param end_model_vertical:
+        The model used when evaluating where ROI ends.
+        (this is for the image rotated)
+        """
+        pass
+
+    @staticmethod
+    def draw_evaluations(img: np.ndarray,
+                         start_model_horizontal: Pipeline,
+                         end_model_horizontal: Pipeline,
+                         start_model_vertical: Pipeline,
+                         end_model_vertical: Pipeline) -> np.ndarray:
+        """
+        Predict and mark predictions on an image.
+
+        :param img:
+        Numpy array to draw the detected boundaries on.
+        :param start_model_horizontal:
+        The model used when evaluating where ROI starts.
+        :param end_model_horizontal:
+        The model used when evaluating where ROI ends.
+        :param start_model_vertical:
+        The model used when evaluating where ROI starts.
+        (this is for the image rotated)
+        :param end_model_vertical:
+        The model used when evaluating where ROI ends.
+        (this is for the image rotated)
+        :return:
+        the input image, with predicted edges drawn.
+        The model for start_horizontal is Orange.
+        The model for end_horizontal is Red.
+        The model for start_vertical is Purple.
+        The model for end_vertical is Green
+        """
+        pass
+
+    @staticmethod
+    def create_collage(masked_img: np.ndarray, img_lines: np.ndarray,
+                       pre_remapping: np.ndarray, post_remapping: np.ndarray,
+                       map_horizontal: np.ndarray, map_vertical: np.ndarray,
+                       start_model_horizontal: Pipeline,
+                       end_model_horizontal: Pipeline,
+                       start_model_vertical: Pipeline,
+                       end_model_vertical: Pipeline) -> np.ndarray:
+        """
+        Create image displaying all relevant information.
+
+        :param masked_img: Masked version of the image being remapped,
+        where non roi sections are black.
+        :param img_lines: Image where predicted edges are drawn
+        :param pre_remapping: Original image
+        :param post_remapping: Image after remapping.
+        :param horizontal_map: Image visualizing 
+        the remapping in horizontal direction. Grayscale.
+        :param vertical_map: Image visualizing
+        the remapping in vertical direction. Grayscale.
+        :param start_model_horizontal: The model used
+        when evaluating where ROI starts.
+        :param end_model_horizontal: The model used
+        when evaluating where ROI ends.
+        :param start_model_vertical: The model used
+        when evaluating where ROI starts. (this is for the image rotated)
+        :param end_model_vertical: The model used
+        when evaluating where ROI ends.(this is for the image rotated)
+        :return: image of input information displayed.
+        """
+        pass
