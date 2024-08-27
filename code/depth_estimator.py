@@ -42,6 +42,10 @@ class DepthCorrection:
                 print(model2)
                 print('-')
             print(':::::::::::::::::::::::::::::::::::')
+        if evaluation_class:
+            evaluation_class.add_image(masked_img, frame_bgra,
+                                       self.frame, self.map_a,
+                                       self.map_b, *self.models[0])
 
     def correct_image(self, frame: np.ndarray,
                       masked: np.ndarray) -> np.ndarray:
@@ -51,10 +55,10 @@ class DepthCorrection:
         :param frame: BGRA image
         :param masked: GRAYSCALE image
         """
-        map_a, map_b = self.get_flattening_maps(masked)
-        cv2.imwrite('map_b_vertical.png', map_b)
-        cv2.imwrite('map_a_horizontal.png', map_a)
-        flattened_image = cv2.remap(frame, map_a, map_b,
+        self.map_a, self.map_b = self.get_flattening_maps(masked)
+        cv2.imwrite('map_b_vertical.png', self.map_b)
+        cv2.imwrite('map_a_horizontal.png', self.map_a)
+        flattened_image = cv2.remap(frame, self.map_a, self.map_b,
                                     interpolation=cv2.INTER_NEAREST,
                                     borderMode=cv2.BORDER_WRAP)
 
