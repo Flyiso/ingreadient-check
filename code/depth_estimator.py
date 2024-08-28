@@ -38,14 +38,20 @@ class DepthCorrection:
         frame_bgra = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
         self.correct_image(frame=frame_bgra, masked=masked_img)
         for model in self.models:
-            for model2 in model:
-                print(model2)
-                print('-')
+            print(model)
             print(':::::::::::::::::::::::::::::::::::')
         if evaluation_class:
-            evaluation_class.add_image(masked_img, frame_bgra,
-                                       self.frame, self.map_a,
-                                       self.map_b, *self.models[0])
+            frame_bgr = cv2.cvtColor(frame_bgra, cv2.COLOR_BGRA2BGR)
+            evaluation_class.add_image(masked_img=frame_bgr,
+                                       pre_remapping=frame_bgr,
+                                       post_remapping=self.frame,
+                                       horizontal_map=self.map_a,
+                                       vertical_map=self.map_b,
+                                       start_model_horizontal=self.models[0],
+                                       end_model_horizontal=self.models[1],
+                                       start_model_vertical=self.models[2],
+                                       end_model_vertical=self.models[3],
+                                       model_points=self.points)
 
     def correct_image(self, frame: np.ndarray,
                       masked: np.ndarray) -> np.ndarray:
@@ -95,18 +101,16 @@ class DepthCorrection:
         model_class2 = GetModel(edge_points_rotated,
                                 map_base_rotated)
         pixel_map_rotated = model_class2.estimated_map
-        for row in pixel_map:
-            if len(row) != 385:
-                print(f'PROBLEM???({len(row)})')
-        print(len(pixel_map))
-        print('first OK!')
         pixel_map_a = np.array(pixel_map).astype(np.float32)
         pixel_map_b = np.array(pixel_map_rotated).astype(np.float32)
         pixel_map_b = cv2.rotate(pixel_map_b, cv2.ROTATE_90_CLOCKWISE)
-        self.models.append([model_class1.final_model_start,
-                            model_class1.final_model_end,
-                            model_class2.final_model_start,
-                            model_class2.final_model_end])
+        pixel_map_b = pixel_map_b.reshape(pixel_map_b.shape[0],
+                                          pixel_map_b.shape[1], 1)
+
+        self.models = [model_class1.final_model_start,
+                       model_class1.final_model_end,
+                       model_class2.final_model_start,
+                       model_class2.final_model_end]
         self.points = [model_class1.est_starts, model_class1.est_ends,
                        model_class2.est_starts, model_class2.est_ends]
         #pixels_a_start, pixels_a_end, pixels_b_start, pixels_b_end \

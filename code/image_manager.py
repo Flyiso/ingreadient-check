@@ -39,6 +39,7 @@ class ManageFrames:
         self.sam_model = sam_model_registry[sam_encoder_version](
             checkpoint=sam_checkpoint_path).to(device=device)
         self.sam_predictor = SamPredictor(self.sam_model)
+        self.evaluation_class = EvaluationImages()
 
     def find_label(self, frame) -> np.ndarray | bool:
         """
@@ -73,7 +74,7 @@ class ManageFrames:
                                            binary_mask)
             img_to_depth = img_to_depth[y:y+h, x:x+w]
 
-            de = DepthCorrection(img_to_depth)
+            de = DepthCorrection(img_to_depth, self.evaluation_class)
             img = de.frame
         if isinstance(img, bool):
             img = self.cylindrical_unwrap(frame, roi_mask)
@@ -198,7 +199,6 @@ class ManageFrames:
         interval = len(frames)//num
         selected_frames = []
         self.set_threshold_values(frames[0], self.find_text(frames[0]))
-        self.evaluation_class = EvaluationImages()
         for frame_id, frame in enumerate(frames):
             if frame_id % interval == 0:
                 frame = self.find_label(frame)
@@ -217,10 +217,13 @@ class ManageFrames:
                     if frame:
                         selected_frames.append[frame, frame_id+id_diff]
                         break
+        if isinstance(self.evaluation_class, EvaluationImages):
+            self.evaluation_class.save_images()
         return [frame[0] for frame in selected_frames]
 
     def cylindrical_unwrap(self, image, mask, f=200):
-        print('CYLINDRICAL UNWARP!!!')
+        print('CYLINDRICAL UN-WARP!!!')
+        input('THIS SHOULD NOT CURRENTLY RUN???')
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
                                        cv2.CHAIN_APPROX_SIMPLE)
         if len(contours) < 1:
