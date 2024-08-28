@@ -171,13 +171,13 @@ class DepthCorrection:
                                in edge_points])-median_1)
         diff_down_1 = float(median_1 - min(
             [edge_point[0] for edge_point in edge_points]))
-        max_diff_1 = min([diff_down_1, diff_up_1])
+        max_diff_1 = min([diff_down_1, diff_up_1])*3.14
         median_2 = np.median([edge_point[1] for edge_point in edge_points])
         diff_up_2 = float(max([edge_point[1] for edge_point
                                in edge_points])-median_2)
         diff_down_2 = float(median_2 - min(
             [edge_point[1] for edge_point in edge_points]))
-        max_diff_2 = min([diff_down_2, diff_up_2])
+        max_diff_2 = min([diff_down_2, diff_up_2])*3.14
 
         for idx, edge_point in enumerate(edge_points):
             if edge_point[0] > median_1+max_diff_1:
@@ -367,12 +367,12 @@ class GetModel:
             self.linear_model_end = self.create_linear()
         self.lasso_model_start, \
             self.lasso_model_end = self.create_lasso()
-        #self.ridge_model_start, \
-        #    self.ridge_model_end = self.create_ridge()
-        #self.elastic_model_start, \
-        #    self.elastic_model_end = self.create_elastic()
-        #self.svr_model_start, \
-        #    self.svr_model_end = self.create_svr()
+        self.ridge_model_start, \
+            self.ridge_model_end = self.create_ridge()
+        self.elastic_model_start, \
+            self.elastic_model_end = self.create_elastic()
+        self.svr_model_start, \
+            self.svr_model_end = self.create_svr()
         print('ALL MODELS CREATED.\nTRYING TO FIND THE BEST...')
 
         self.final_model_start, \
@@ -603,12 +603,12 @@ class GetModel:
         """
         top_r2_start = [-1000000, None]
         top_r2_end = [-1000000, None]
-        start_models = [self.linear_model_start, self.lasso_model_start]#,
-                        #self.ridge_model_start, self.elastic_model_start]#,
-                        #self.svr_model_start]
-        end_models = [self.linear_model_end, self.lasso_model_end]#,
-                      #self.ridge_model_end, self.elastic_model_end]#,
-                      #self.svr_model_end]
+        start_models = [self.linear_model_start, self.lasso_model_start,
+                        self.ridge_model_start, self.elastic_model_start,
+                        self.svr_model_start]
+        end_models = [self.linear_model_end, self.lasso_model_end,
+                      self.ridge_model_end, self.elastic_model_end,
+                      self.svr_model_end]
 
         for start_model, end_model in zip(start_models, end_models):
             test_start = start_model.predict(self.X_test_start)
@@ -636,6 +636,4 @@ class GetModel:
             if model_end != top_r2_end[1]:
                 del model_end
 
-        print(top_r2_start)
-        print(top_r2_end)
         return top_r2_start[1], top_r2_end[1]

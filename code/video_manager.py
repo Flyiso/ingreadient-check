@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 from image_manager import ManageFrames
 from panorama_manager import ManagePanorama
+from model_evaluation import EvaluationImages
 
 
 class RecordLabel:
@@ -64,7 +65,6 @@ class RecordLabel:
             cv2.imshow('frame', frame)
             if isinstance(merged, np.ndarray):
                 cv2.imshow('merged', merged)
-
             if not is_blurry:
                 last_frame = frame
                 self.frame_n += 1
