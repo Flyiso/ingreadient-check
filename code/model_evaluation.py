@@ -124,7 +124,7 @@ class EvaluationImages:
         """
 
         col_0 = cv2.cvtColor(np.vstack([map_horizontal,
-                                        map_vertical]), cv2.COLOR_GRAY2BGR)    
+                                        map_vertical]), cv2.COLOR_GRAY2BGR)
         col_1 = np.vstack([pre_remapping, post_remapping])
         col_2 = np.vstack([masked_img, img_lines])
         col_3 = np.zeros_like(np.hstack(col_0, col_0))
@@ -135,7 +135,7 @@ class EvaluationImages:
                 [self.left, self.right, self.top, self.bottom]), 1):
             text = f'Model for edges on the left:\n{model}'
             collage = cv2.putText(collage,
-                                  text, (collage.shape[1] - 
+                                  text, (collage.shape[1] -
                                          sum(col_0.shape[1], col_0.shape[1]),
                                          collage.shape[0]/idx),
                                   cv2.FONT_HERSHEY_COMPLEX, 3.0, color, 3)
