@@ -91,7 +91,9 @@ class DepthCorrection:
         map_base_rotated = cv2.rotate(masked, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
         edge_points = self.get_edge_points(map_base)
+        edge_points = self.manage_outliers(edge_points)
         edge_points_rotated = self.get_edge_points(map_base_rotated)
+        edge_points_rotated = self.manage_outliers(edge_points_rotated)
 
         model_class1 = GetModel(edge_points, map_base)
         pixel_map = model_class1.estimated_map
@@ -154,6 +156,43 @@ class DepthCorrection:
                 edge_points.append((min(roi), max(roi)))
         if reverse:
             edge_points = [pair[::-1] for pair in edge_points]
+        return edge_points
+
+    @staticmethod
+    def manage_outliers(edge_points: list):
+        """
+        Replace outlier points with standardized value
+
+        :param  edge_points: List of where  edges where detected
+        :output: List where outlier edges have been replaced.
+        """
+        median_1 = np.median([edge_point[0] for edge_point in edge_points])
+        diff_up_1 = float(max([edge_point[0] for edge_point
+                               in edge_points])-median_1)
+        diff_down_1 = float(median_1 - min(
+            [edge_point[0] for edge_point in edge_points]))
+        max_diff_1 = min([diff_down_1, diff_up_1])
+        median_2 = np.median([edge_point[1] for edge_point in edge_points])
+        diff_up_2 = float(max([edge_point[1] for edge_point
+                               in edge_points])-median_2)
+        diff_down_2 = float(median_2 - min(
+            [edge_point[1] for edge_point in edge_points]))
+        max_diff_2 = min([diff_down_2, diff_up_2])
+
+        for idx, edge_point in enumerate(edge_points):
+            if edge_point[0] > median_1+max_diff_1:
+                point_1 = median_1+max_diff_1
+            elif edge_point[0] < median_1-max_diff_1:
+                point_1 = median_1-max_diff_1
+            else:
+                point_1 = edge_point[0]
+            if edge_point[1] > median_2+max_diff_2:
+                point_2 = median_2+max_diff_2
+            elif edge_point[1] < median_2-max_diff_2:
+                point_2 = median_2-max_diff_2
+            else:
+                point_2 = edge_point[1]
+            edge_points[idx] = (point_1, point_2)
         return edge_points
 
     def distribute_by_shape(self, edge_points, edge_points_rotated):
