@@ -16,6 +16,10 @@ class EvaluationImages:
     """
     def __init__(self) -> None:
         self.images = []
+        self.top = (255, 0, 0)
+        self.bottom = (255, 153, 51)
+        self.left = (153, 51, 255)
+        self.right = (152, 255, 51)
 
     def add_image(self, masked_img: np.ndarray,
                   pre_remapping: np.ndarray, post_remapping: np.ndarray,
@@ -56,8 +60,7 @@ class EvaluationImages:
                                       end_model_vertical)
         self.images.append(collage)
 
-    @staticmethod
-    def draw_evaluations(img: np.ndarray,
+    def draw_evaluations(self, img: np.ndarray,
                          model_points: list) -> np.ndarray:
         """
         Predict and mark predictions on an image.
@@ -71,7 +74,28 @@ class EvaluationImages:
         The model for start_vertical is Purple.
         The model for end_vertical is Green
         """
-        start_a, end_a, start_b, end_b = model_points
+        length_vertical = []
+        length_horizontal = []
+        for predictions in model_points:
+            if len(predictions) == len(img):
+                length_horizontal.append(predictions)
+            elif len(predictions) == len(img[0]):
+                length_vertical.append(predictions)
+            else:
+                print('no length match for')
+                print(f'n_ predictions: {len(predictions)}')
+                print(f'target_size: {img.shape}\n')
+
+        for h, point_pair in enumerate(zip(length_vertical[0],
+                                           length_vertical[1])):
+            # green
+            img = cv2.circle(img, (h, max(point_pair)), 2, self.right, -1)
+            img = cv2.circle(img, (h, min(point_pair)), 2, self.left, -1)
+        for w, point_pair in enumerate(zip(length_horizontal[0],
+                                           length_horizontal[1])):
+            img = cv2.circle(img, (max(point_pair), w), 2, self.bottom, -1)
+            img = cv2.circle(img, (min(point_pair), w), 2, self.top, -1)
+        return img
 
     @staticmethod
     def create_collage(masked_img: np.ndarray, img_lines: np.ndarray,
@@ -103,4 +127,8 @@ class EvaluationImages:
         when evaluating where ROI ends.(this is for the image rotated)
         :return: image of input information displayed.
         """
-        pass
+        col_1 = np.vstack([masked_img, img_lines])
+        col_2 = np.vstack([pre_remapping, post_remapping])
+        col_3 = cv2.cvtColor(np.vstack([map_horizontal,
+                                        map_vertical]), cv2.COLOR_GRAY2BGR)
+        images = np.hstack([col_1, col_2, col_3])
