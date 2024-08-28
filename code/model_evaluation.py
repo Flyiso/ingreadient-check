@@ -69,10 +69,6 @@ class EvaluationImages:
         Numpy array to draw the detected boundaries on.
         :param model_points: List of list, where all predictions are.
         :return: The input image, with predicted edges drawn.
-        The model for start_horizontal is Orange.
-        The model for end_horizontal is Red.
-        The model for start_vertical is Purple.
-        The model for end_vertical is Green
         """
         length_vertical = []
         length_horizontal = []
