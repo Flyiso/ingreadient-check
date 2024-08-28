@@ -16,10 +16,10 @@ class EvaluationImages:
     """
     def __init__(self) -> None:
         self.images = []
-        self.top = (255, 0, 0)
-        self.bottom = (255, 153, 51)
-        self.left = (153, 51, 255)
-        self.right = (152, 255, 51)
+        self.top = (0, 0, 255)
+        self.bottom = (51, 153, 255)
+        self.left = (255, 51, 153)
+        self.right = (51, 255, 152)
 
     def add_image(self, masked_img: np.ndarray,
                   pre_remapping: np.ndarray, post_remapping: np.ndarray,
@@ -144,17 +144,18 @@ class EvaluationImages:
                 [self.left, self.right, self.top, self.bottom]), 1):
             step_text = ([f'{s_name}, {step}' for
                           s_name, step in model.steps])
-            text = ['\nPipeline(steps=', *step_text]
+            text = ['Pipeline(steps=', *step_text]
 
             line_height = cv2.getTextSize("Text", cv2.FONT_HERSHEY_COMPLEX,
-                                          0.7, 1)[0][1] + 10
-            y = int((collage.shape[0]/idx)+collage.shape[0]/2)
-            x = int(collage.shape[1] - (col_0.shape[1]*3))
+                                          1, 1)[0][1] + 10
+            y = int(collage.shape[0] - 
+                    (((collage.shape[0]/2)//4)*idx)+line_height)
+            x = int(collage.shape[1] - (col_0.shape[1]*3)+5)
             for i, line in enumerate(text):
                 y_offset = y + i * line_height
                 cv2.putText(collage, line, (x, y_offset),
-                            cv2.FONT_HERSHEY_COMPLEX, 0.7,
-                            color, 1, cv2.LINE_AA)
+                            cv2.FONT_HERSHEY_COMPLEX, 1,
+                            color, 2, cv2.LINE_AA)
         return collage
 
     def save_images(self):

@@ -37,9 +37,6 @@ class DepthCorrection:
         masked_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame_bgra = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
         self.correct_image(frame=frame_bgra, masked=masked_img)
-        for model in self.models:
-            print(model)
-            print(':::::::::::::::::::::::::::::::::::')
         if evaluation_class:
             frame_bgr = cv2.cvtColor(frame_bgra, cv2.COLOR_BGRA2BGR)
             evaluation_class.add_image(masked_img=frame_bgr,
@@ -331,10 +328,10 @@ class GetModel:
             self.linear_model_end = self.create_linear()
         self.lasso_model_start, \
             self.lasso_model_end = self.create_lasso()
-        self.ridge_model_start, \
-            self.ridge_model_end = self.create_ridge()
-        self.elastic_model_start, \
-            self.elastic_model_end = self.create_elastic()
+        #self.ridge_model_start, \
+        #    self.ridge_model_end = self.create_ridge()
+        #self.elastic_model_start, \
+        #    self.elastic_model_end = self.create_elastic()
         #self.svr_model_start, \
         #    self.svr_model_end = self.create_svr()
         print('ALL MODELS CREATED.\nTRYING TO FIND THE BEST...')
@@ -567,11 +564,11 @@ class GetModel:
         """
         top_r2_start = [-1000000, None]
         top_r2_end = [-1000000, None]
-        start_models = [self.linear_model_start, self.lasso_model_start,
-                        self.ridge_model_start, self.elastic_model_start]#,
+        start_models = [self.linear_model_start, self.lasso_model_start]#,
+                        #self.ridge_model_start, self.elastic_model_start]#,
                         #self.svr_model_start]
-        end_models = [self.linear_model_end, self.lasso_model_end,
-                      self.ridge_model_end, self.elastic_model_end]#,
+        end_models = [self.linear_model_end, self.lasso_model_end]#,
+                      #self.ridge_model_end, self.elastic_model_end]#,
                       #self.svr_model_end]
 
         for start_model, end_model in zip(start_models, end_models):
