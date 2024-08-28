@@ -93,8 +93,7 @@ class EvaluationImages:
             img = cv2.circle(img, (min(point_pair), w), 2, self.top, -1)
         return img
 
-    @staticmethod
-    def create_collage(masked_img: np.ndarray, img_lines: np.ndarray,
+    def create_collage(self, masked_img: np.ndarray, img_lines: np.ndarray,
                        pre_remapping: np.ndarray, post_remapping: np.ndarray,
                        map_horizontal: np.ndarray, map_vertical: np.ndarray,
                        start_model_horizontal: Pipeline,
@@ -123,8 +122,28 @@ class EvaluationImages:
         when evaluating where ROI ends.(this is for the image rotated)
         :return: image of input information displayed.
         """
-        col_1 = np.vstack([masked_img, img_lines])
-        col_2 = np.vstack([pre_remapping, post_remapping])
-        col_3 = cv2.cvtColor(np.vstack([map_horizontal,
-                                        map_vertical]), cv2.COLOR_GRAY2BGR)
-        images = np.hstack([col_1, col_2, col_3])
+
+        col_0 = cv2.cvtColor(np.vstack([map_horizontal,
+                                        map_vertical]), cv2.COLOR_GRAY2BGR)    
+        col_1 = np.vstack([pre_remapping, post_remapping])
+        col_2 = np.vstack([masked_img, img_lines])
+        col_3 = np.zeros_like(np.hstack(col_0, col_0))
+        collage = np.hstack([col_0, col_1, col_2, col_3])
+        for idx, (model, color) in enumerate(zip(
+            [start_model_horizontal, end_model_horizontal,
+             start_model_vertical, end_model_vertical],
+                [self.left, self.right, self.top, self.bottom]), 1):
+            text = f'Model for edges on the left:\n{model}'
+            collage = cv2.putText(collage,
+                                  text, (collage.shape[1] - 
+                                         sum(col_0.shape[1], col_0.shape[1]),
+                                         collage.shape[0]/idx),
+                                  cv2.FONT_HERSHEY_COMPLEX, 3.0, color, 3)
+        return collage
+
+    def save_images(self):
+        """
+        Save the created collages in specific folder
+        """
+        for index, image in enumerate(self.images, 1):
+            cv2.imwrite(f'progress_images/evaluation_img_{index}.png', image)
