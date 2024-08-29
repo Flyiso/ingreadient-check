@@ -81,10 +81,10 @@ class EvaluationImages:
         for predictions in model_points:
             if len(predictions) == len(img):
                 print('vertical')
-                length_horizontal.append(predictions)
+                length_horizontal.append(predictions[::-1])
             elif len(predictions) == len(img[0]):
                 print('horizontal')
-                length_vertical.append(predictions)
+                length_vertical.append(predictions[::-1])
             else:
                 print('no length match for')
                 print(f'n_ predictions: {len(predictions)}')

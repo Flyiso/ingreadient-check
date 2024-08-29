@@ -431,11 +431,11 @@ class GetModel:
         X_train_start, X_test_start, y_train_start, y_test_start = \
             train_test_split(self.df[['idx', 'roi_len']],
                              self.df['values_start'],
-                             test_size=0.2, random_state=101)
+                             test_size=0.3, random_state=101)
         X_train_end, X_test_end, y_train_end, y_test_end = \
             train_test_split(self.df[['idx', 'roi_len']],
                              self.df[predict_columns[1]],
-                             test_size=0.2, random_state=101)
+                             test_size=0.3, random_state=101)
 
         return X_train_start, X_train_end, X_test_start, X_test_end, \
             y_train_start, y_train_end, y_test_start, y_test_end
@@ -575,9 +575,9 @@ class GetModel:
             ('regression', SVR())])
         param_grid = {'regression__C': [0.001, 0.1, 0.5, 5],
                       'regression__kernel': ['linear', 'poly', 'rbf'],
-                      'regression__degree': [1, 2],  # , 3, 4
+                      'regression__degree': [1, 2],
                       'regression__epsilon': [0, 0.1, 0.2,  0.5, 2],
-                      'regression__gamma': ['scale', 'auto']}   # , 'auto'
+                      'regression__gamma': ['scale', 'auto']}
         svr_pipe_grid = GridSearchCV(pipeline_svr, param_grid,
                                      cv=5, scoring='r2')
         svr_pipe_grid2 = GridSearchCV(pipeline_svr, param_grid,
