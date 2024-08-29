@@ -77,10 +77,13 @@ class EvaluationImages:
         """
         length_vertical = []
         length_horizontal = []
+        print('order of the detections are:')
         for predictions in model_points:
             if len(predictions) == len(img):
+                print('vertical')
                 length_horizontal.append(predictions)
             elif len(predictions) == len(img[0]):
+                print('horizontal')
                 length_vertical.append(predictions)
             else:
                 print('no length match for')
@@ -141,14 +144,14 @@ class EvaluationImages:
         for idx, (model, color) in enumerate(zip(
             [start_model_horizontal, end_model_horizontal,
              start_model_vertical, end_model_vertical],
-                [self.left, self.right, self.top, self.bottom]), 1):
+                [self.top, self.bottom, self.left, self.right]), 1):
             step_text = ([f'{s_name}, {step}' for
                           s_name, step in model.steps])
             text = ['Pipeline(steps=', *step_text]
 
             line_height = cv2.getTextSize("Text", cv2.FONT_HERSHEY_COMPLEX,
                                           1, 1)[0][1] + 10
-            y = int(collage.shape[0] - 
+            y = int(collage.shape[0] -
                     (((collage.shape[0]/2)//4)*idx)+line_height)
             x = int(collage.shape[1] - (col_0.shape[1]*3)+5)
             for i, line in enumerate(text):
