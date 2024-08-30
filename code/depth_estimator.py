@@ -9,7 +9,7 @@ TODO: make this take cylinders/circles into consideration
 import numpy as np
 import pandas as pd
 import cv2
-from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.svm import SVR
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
@@ -171,19 +171,27 @@ class DepthCorrection:
                                in edge_points])-median_1)
         diff_down_1 = float(median_1 - min(
             [edge_point[0] for edge_point in edge_points]))
-        max_diff_1 = min([diff_down_1, diff_up_1])*3.14
+        max_diff_1 = min([diff_down_1, diff_up_1]) + \
+            abs(diff_down_1 - diff_up_1)/1.3
         median_2 = np.median([edge_point[1] for edge_point in edge_points])
         diff_up_2 = float(max([edge_point[1] for edge_point
                                in edge_points])-median_2)
         diff_down_2 = float(median_2 - min(
             [edge_point[1] for edge_point in edge_points]))
-        max_diff_2 = min([diff_down_2, diff_up_2])*3.14
+        max_diff_2 = min([diff_down_2, diff_up_2]) + \
+            abs(diff_down_2 - diff_up_2)/1.3
 
         for idx, edge_point in enumerate(edge_points):
             if edge_point[0] > median_1+max_diff_1:
-                point_1 = median_1+max_diff_1
+                point_1 = \
+                    edge_points[idx-1][0]+(edge_points[idx-1][0]
+                                           - edge_points[idx-2][0]) if \
+                    idx > 1 else median_1+max_diff_1
             elif edge_point[0] < median_1-max_diff_1:
-                point_1 = median_1-max_diff_1
+                point_1 = \
+                    edge_points[idx-1][0]+(edge_points[idx-1][0]
+                                           - edge_points[idx-2][0]) if \
+                    idx > 1 else median_1-max_diff_1
             else:
                 point_1 = edge_point[0]
             if edge_point[1] > median_2+max_diff_2:
@@ -365,14 +373,14 @@ class GetModel:
 
         self.linear_model_start, \
             self.linear_model_end = self.create_linear()
-        self.lasso_model_start, \
-            self.lasso_model_end = self.create_lasso()
+        #self.lasso_model_start, \
+        #    self.lasso_model_end = self.create_lasso()
         self.ridge_model_start, \
             self.ridge_model_end = self.create_ridge()
         self.elastic_model_start, \
             self.elastic_model_end = self.create_elastic()
-        self.svr_model_start, \
-            self.svr_model_end = self.create_svr()
+        #self.svr_model_start, \
+        #    self.svr_model_end = self.create_svr()
         print('ALL MODELS CREATED.\nTRYING TO FIND THE BEST...')
 
         self.final_model_start, \
@@ -397,11 +405,6 @@ class GetModel:
             pixel_map.append([[value] for value in np.linspace(
                 est_start, est_end, len(self.roi_data[0]))])
         return pixel_map
-
-    def make_map_with_best_modes(self):
-        """
-        create a value map using the models estimated to do best.
-        """
 
     def create_data_frame(self):
         """
@@ -449,7 +452,7 @@ class GetModel:
             ('scale', StandardScaler()),
             ('poly', PolynomialFeatures()),
             ('regression', LinearRegression())])
-        param_grid = {'poly__degree': [1, 2]}  # Remove 3 and 4 later?
+        param_grid = {'poly__degree': [1, 2]}
 
         linear_pipe_grid = GridSearchCV(pipeline_linear, param_grid,
                                         cv=10, scoring='r2')
@@ -507,7 +510,7 @@ class GetModel:
         """
         print('TEST RIDGE MODEL')
         pipeline_ridge = Pipeline(steps=[
-            ('scale', StandardScaler()),
+            ('scale', MaxAbsScaler()),
             ('poly', PolynomialFeatures()),
             ('regression', Ridge())])
         param_grid = {'poly__degree': [1, 2],
@@ -538,7 +541,7 @@ class GetModel:
         """
         print('TEST ELASTIC NET MODEL...')
         pipeline_elastic = Pipeline(steps=[
-            ('scale', StandardScaler()),
+            ('scale', RobustScaler()),
             ('poly', PolynomialFeatures()),
             ('regression', ElasticNet())])
         param_grid = {'poly__degree': [1, 2],
@@ -573,10 +576,11 @@ class GetModel:
         pipeline_svr = Pipeline(steps=[
             ('scale', StandardScaler()),
             ('regression', SVR())])
-        param_grid = {'regression__C': [0.001, 0.1, 0.5, 5],
-                      'regression__kernel': ['linear', 'poly', 'rbf'],
+        param_grid = {'regression__C': [0.001, 0.1, 0.5, 0.8,],
+                      'regression__kernel': ['linear', 'poly',
+                                             'rbf', 'sigmoid'],
                       'regression__degree': [1, 2],
-                      'regression__epsilon': [0, 0.1, 0.2,  0.5, 2],
+                      'regression__epsilon': [0.1, 0.2, 0.25],
                       'regression__gamma': ['scale', 'auto']}
         svr_pipe_grid = GridSearchCV(pipeline_svr, param_grid,
                                      cv=5, scoring='r2')
@@ -603,12 +607,10 @@ class GetModel:
         """
         top_r2_start = [-1000000, None]
         top_r2_end = [-1000000, None]
-        start_models = [self.linear_model_start, self.lasso_model_start,
-                        self.ridge_model_start, self.elastic_model_start,
-                        self.svr_model_start]
-        end_models = [self.linear_model_end, self.lasso_model_end,
-                      self.ridge_model_end, self.elastic_model_end,
-                      self.svr_model_end]
+        start_models = [self.linear_model_start,
+                        self.ridge_model_start, self.elastic_model_start]
+        end_models = [self.linear_model_end,
+                      self.ridge_model_end, self.elastic_model_end]
 
         for start_model, end_model in zip(start_models, end_models):
             test_start = start_model.predict(self.X_test_start)

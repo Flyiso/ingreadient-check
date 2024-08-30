@@ -63,7 +63,7 @@ class EvaluationImages:
             print('verbose=True\ndisplay results:')
             collage = cv2.resize(collage, (collage.shape[0]//3,
                                            collage.shape[1]//3))
-            cv2.imshow('Prediction summary', collage)
+            cv2.imwrite('last_summary.png', collage)
 
     def draw_evaluations(self, img: np.ndarray,
                          model_points: list) -> np.ndarray:
@@ -81,7 +81,7 @@ class EvaluationImages:
         for predictions in model_points:
             if len(predictions) == len(img):
                 print('vertical')
-                length_horizontal.append(predictions[::-1])
+                length_horizontal.append(predictions)
             elif len(predictions) == len(img[0]):
                 print('horizontal')
                 length_vertical.append(predictions[::-1])
