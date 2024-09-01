@@ -16,7 +16,7 @@ class ManagePanorama:
     output frames.
     """
     def __init__(self,
-                 frame_manager, interval: int = 35,  # was 23
+                 frame_manager, interval: int = 55,  # was 23
                  display_current: bool = False) -> None:
         """
         parameters:
@@ -50,7 +50,7 @@ class ManagePanorama:
     def add_frame(self, frame, last_frame: bool = False) -> bool | np.ndarray:
         """
         Adds a new frame to the mergers frames.
-        tries to merge in image to base frame if continous merge is on,
+        tries to merge in image to base frame if continuous merge is on,
         and returns result.
         else, merges all (between interval) frames when last_frame is true.
         Parameters:
@@ -87,8 +87,7 @@ class ManagePanorama:
                 return self.base
         return False
 
-    def stitch_current(self,
-                       patience: int = 5) -> bool | np.ndarray:
+    def stitch_current(self, patience: int = 5) -> bool | np.ndarray:
         """
         Attempts To Stitch the base with the current to-add frames,
         and sets the result as new base.

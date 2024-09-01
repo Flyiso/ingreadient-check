@@ -5,7 +5,6 @@ import cv2
 import numpy as np
 from image_manager import ManageFrames
 from panorama_manager import ManagePanorama
-from model_evaluation import EvaluationImages
 
 
 class RecordLabel:

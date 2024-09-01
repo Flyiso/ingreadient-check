@@ -5,50 +5,6 @@ to the dietary restrictions the user has.
 
 1) record labels to make application usable on containers with label wrapped around.
 
-TODO: Depth estimator necessary? could still be used to determine how much 'space' a pixel may use?
-
-TODO: manage areas w depth value < 5 (use contours instead?)
-
-TODO: test to crop as large as possible rectangular image from by-text-rotated image
- 
-TODO: Test label_video_reader with more videos and images to modify and make application
-      usable for all kinds of ingredients lists.
-
-TODO: try use depth as guide when correcting perspective.
-
-TODO: control of distance between images in each merge?.
-TODO: Try to use panorama mode for stitcher every x
-      merge(with high thresh?) to avoid loosing first img section
-
-TODO: try panorama mode when scans not working?
-TODO: try to also warp img before merge- 
-      take both images into consideration and adjust accordingly?
-
-TODO: make it runable on mobile devices.
-      (less pytesseract? more efficient ways to find text region? image segmentation? huggingface?)
-
-TODO: error when no contour found- create early escape/error management(check DINO)
-
-TODO: Manage error in stitcher, try to add more images.
-
-TODO: ad text read method for when full image is finally merged.
-
-TODO: Instead of calling dino model for each segmentation, re-use first segmented outline & try
-      find similar shape in frame? (makes application faster/more suitable for small devices?)
-      -TRY -object-tracking- add frame to merge evenly distanced.
-
-TODO: modify for live usage.
-      1-segment label- detect label before asking user to keep item at same distance
-      and start to turn it. (paint label-shaped box on screen to guide user?)
-            a. use that box to detect difference between current and last frame to decide
-               what frames to merge? - could make segmentation part of program less demanding?
-      2. -Live updates of panorama img- force end for video,(improve quality/merge again afterwards?)
-      3. Make it return the final image- connect it all to class/code that connect it to everything else
-         needed for database creation.
-
-TODO:  Try to 'force' merge by adjusting flattening/remapping until success.
-       then move on to next frame. (might solve bad flattening?)
-
 2) add option to add label by photo for fully visible labels.
 
 3) Detect words on ingredient label, filter and save by target language.
@@ -56,6 +12,16 @@ TODO:  Try to 'force' merge by adjusting flattening/remapping until success.
 4) Databases & relations, make option to connect detected ingredient list to specific product(and barcode?/option to scan just by barcode to avoid DINO/SAM when not necessary?)
 
 5) GUI, user accounts
+
+TODO:
+ 1-Better selection of what images to include in panorama
+ 2-Tune parameters for stitching better-make stitching happen,
+   make stitching happen while filming, not after.
+ 3-Explore using pytesseract readability as guidelines for stitcher and flattening.
+ 4-Remove unused code, fix dockstings.
+ 5-check what libraries to keep or remove.
+ 6-increase clarity for future GUI and database integration.
+
 
 -- possible attributes(or relations) for each product:
    id-

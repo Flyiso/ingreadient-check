@@ -3,7 +3,6 @@ File that collect all image enhancement, manipulation, et cetera.
 contains methods for segmentation of ROI, corrections of perspective,
 correction of lightning conditions and more
 """
-from model_evaluation import EvaluationImages
 from depth_estimator import DepthCorrection
 from groundingdino.util.inference import Model
 from segment_anything import sam_model_registry, SamPredictor
@@ -34,12 +33,11 @@ class ManageFrames:
             f'{dino_dir}config/GroundingDINO_SwinT_OGC.py',
             f'{dino_dir}weights/groundingdino_swint_ogc.pth')
         self.classes = ['Text or image']  # ['text or image']
-        self.box_threshold = 0.35  # 0.35
+        self.box_threshold = 0.25  # 0.35
         self.text_threshold = 0.25
         self.sam_model = sam_model_registry[sam_encoder_version](
             checkpoint=sam_checkpoint_path).to(device=device)
         self.sam_predictor = SamPredictor(self.sam_model)
-        self.evaluation_class = EvaluationImages()
 
     def find_label(self, frame) -> np.ndarray | bool:
         """
@@ -74,7 +72,7 @@ class ManageFrames:
                                            binary_mask)
             img_to_depth = img_to_depth[y:y+h, x:x+w]
 
-            de = DepthCorrection(img_to_depth, self.evaluation_class)
+            de = DepthCorrection(img_to_depth)
             img = de.frame
         if isinstance(img, bool):
             img = self.cylindrical_unwrap(frame, roi_mask)
@@ -217,64 +215,7 @@ class ManageFrames:
                     if frame:
                         selected_frames.append[frame, frame_id+id_diff]
                         break
-        if isinstance(self.evaluation_class, EvaluationImages):
-            self.evaluation_class.save_images()
         return [frame[0] for frame in selected_frames]
-
-    def cylindrical_unwrap(self, image, mask, f=200):
-        print('CYLINDRICAL UN-WARP!!!')
-        input('THIS SHOULD NOT CURRENTLY RUN???')
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
-                                       cv2.CHAIN_APPROX_SIMPLE)
-        if len(contours) < 1:
-            return False
-        contour = max(contours, key=cv2.contourArea)
-
-        rect = cv2.minAreaRect(contour)
-        center, (w, h), angle = rect
-        if w > h:
-            angle = angle-90
-        if angle < -180:
-            angle += 360
-        elif angle > 180:
-            angle += 360
-        rotated_image = cv2.warpAffine(image, cv2.getRotationMatrix2D
-                                       (center, angle, 1.0),
-                                       (image.shape[1], image.shape[0]))
-        rotated_mask = cv2.warpAffine(mask, cv2.getRotationMatrix2D
-                                      (center, angle, 1.0),
-                                      (mask.shape[1], mask.shape[0]))
-
-        contours, _ = cv2.findContours(rotated_mask, cv2.RETR_EXTERNAL,
-                                       cv2.CHAIN_APPROX_SIMPLE)
-        if len(contours) < 1:
-            return False
-        contour = max(contours, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(contour)
-        roi_cropped = rotated_image[y:y+h, x:x+w]
-
-        map_x = np.zeros((h, w), dtype=np.float32)
-        map_y = np.zeros((h, w), dtype=np.float32)
-
-        cx, cy = w // 2, h // 2
-
-        if self.focal_length:
-            f = self.focal_length
-
-        for i in range(h):
-            for j in range(w):
-                theta = (j - cx) / f
-                h_ = (i - cy) / f
-                x_ = f * np.sin(theta)
-                y_ = f * h_
-                map_x[i, j] = x_ + cx
-                map_y[i, j] = y_ + cy
-
-        try:
-            return cv2.remap(roi_cropped, map_x, map_y,
-                             cv2.INTER_LINEAR)
-        except cv2.error:
-            return False
 
     def is_blurry(self, frame: np.ndarray,
                   threshold: float = 300) -> bool:
