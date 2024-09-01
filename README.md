@@ -15,6 +15,7 @@ to the dietary restrictions the user has.
 
 TODO:
  1-Better selection of what images to include in panorama
+   Explore options such as/similar to object tracking. 
  2-Tune parameters for stitching better-make stitching happen,
    make stitching happen while filming, not after.
  3-Explore using pytesseract readability as guidelines for stitcher and flattening.
