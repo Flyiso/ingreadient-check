@@ -13,11 +13,9 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 
 
-class DepthCorrection:
+class FlattenImage:
     """
-    Class to correct the image's perspective/flatten it.
-    init sets min/max diff
-    method just correct by values?
+    Class to correct an image to make it appear flat.
     """
     def __init__(self, frame: np.ndarray) -> None:
         """
@@ -26,7 +24,6 @@ class DepthCorrection:
         :param frame: numpy array of the image to create map from.
         :param evaluation_class: class for model evaluation. optional.
         """
-        self.models = []  # store all models here to evaluate
         masked_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame_bgra = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
         self.correct_image(frame=frame_bgra, masked=masked_img)

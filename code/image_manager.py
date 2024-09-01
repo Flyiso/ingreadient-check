@@ -3,7 +3,7 @@ File that collect all image enhancement, manipulation, et cetera.
 contains methods for segmentation of ROI, corrections of perspective,
 correction of lightning conditions and more
 """
-from depth_estimator import DepthCorrection
+from image_flattening import FlattenImage
 from groundingdino.util.inference import Model
 from segment_anything import sam_model_registry, SamPredictor
 from typing import List
@@ -72,7 +72,7 @@ class ManageFrames:
                                            binary_mask)
             img_to_depth = img_to_depth[y:y+h, x:x+w]
 
-            de = DepthCorrection(img_to_depth)
+            de = FlattenImage(img_to_depth)
             img = de.frame
         if isinstance(img, bool):
             img = self.cylindrical_unwrap(frame, roi_mask)
