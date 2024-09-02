@@ -36,7 +36,17 @@ class ManageImage:
     This class extract roi and transforms the image
     to make it suitable for stitching.
     """
-    pass
+    def segment_image(self):
+        pass
+
+    def evaluate_segmentation(self):
+        pass
+
+    def create_maps(self):
+        pass
+
+    def flatten_with_maps(self):
+        pass
 
 
 class ManageStitcher:
@@ -44,4 +54,9 @@ class ManageStitcher:
     This class manages the stitcher and makes ensures
     quality and performance
     """
-    pass
+    def stitch_in_image(self):
+        """
+        Method to use the image manager to modify the image
+        until it works for stitching.
+        """
+        pass
