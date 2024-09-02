@@ -28,7 +28,18 @@ class VideoFlow:
     """
     This class manages the flow of the frames.
     """
-    pass
+    def __innit__(self):
+        self.frames = ManageImage()
+
+    def start_video(self):
+        self.capture = cv2.VideoCapture(self.video_path)
+        while self.capture.isOpened():
+            ret, frame = self.capture.read()
+            if not ret:
+                break
+            if cv2.waitKey(25) & 0xFF == 27:
+                break
+            self.frames.add_image(frame)
 
 
 class ManageImage:
@@ -36,7 +47,30 @@ class ManageImage:
     This class extract roi and transforms the image
     to make it suitable for stitching.
     """
+    def __init__(self) -> None:
+        self.panorama = None
+        self.last_frame = None
+
+    def add_image(self, new_image: np.ndarray):
+        """
+        send new images here. Try to detect matching points
+        of priory saved frame in new frame. call segmentation
+        and processing when overlap threshold is reached.
+        attempt to stitch new image to the panorama.
+        """
+        pass
+
     def segment_image(self):
+        """
+        Use dino and sam to extract ROI from image.
+        """
+        pass
+
+    def map_roi_to_regression(self):
+        """
+        use RANSACRegressor to 'smoothen' uneven extracted
+        ROI.
+        """
         pass
 
     def evaluate_segmentation(self):
