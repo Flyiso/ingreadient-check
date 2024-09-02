@@ -60,3 +60,17 @@ class ManageStitcher:
         until it works for stitching.
         """
         pass
+
+    def evaluate_result(self):
+        """
+        Evaluate/control performance, parameters, and processes
+        of stitcher and input images.
+        """
+        pass
+
+    def select_frame(self):
+        """
+        Method to select what frames to use in the panorama,
+        to ensure balance between performance and quality.
+        """
+        pass
