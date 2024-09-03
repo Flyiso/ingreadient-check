@@ -50,6 +50,21 @@ class ManageImage:
     def __init__(self) -> None:
         self.panorama = None
         self.last_frame = None
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        sam_encoder_version = 'vit_h'
+        sam_checkpoint_path = 'weights/sam_vit_h_4b8939.pth'
+        dino_dir = '.venv/lib/python3.11/site-packages/groundingdino/'
+        self.pt_config = pt_config
+        self.focal_length = False
+        self.dino_model = Model(
+            f'{dino_dir}config/GroundingDINO_SwinT_OGC.py',
+            f'{dino_dir}weights/groundingdino_swint_ogc.pth')
+        self.classes = ['Text or image']  # ['text or image']
+        self.box_threshold = 0.25  # 0.35
+        self.text_threshold = 0.25
+        self.sam_model = sam_model_registry[sam_encoder_version](
+            checkpoint=sam_checkpoint_path).to(device=device)
+        self.sam_predictor = SamPredictor(self.sam_model)
 
     def add_image(self, new_image: np.ndarray):
         """
@@ -71,7 +86,31 @@ class ManageImage:
         use RANSACRegressor to 'smoothen' uneven extracted
         ROI.
         """
-        pass
+        edges = [[edge_point[0] for edge_point in edge_points],
+                 [edge_point[1] for edge_point in edge_points]]
+        for point_index, points in enumerate(edges):
+            first = points[:len(points)//3]
+            second = points[len(points)//3:(len(points)//3)*2]
+            third = points[(len(points)//3)*2:]
+            x = np.linspace(0, len(points), len(points))
+            X = x[:, np.newaxis]
+            if np.median(first) < np.median(second) > np.median(third):
+                model = make_pipeline(PolynomialFeatures(2), RANSACRegressor())
+                model.fit(X, points)
+                points = model.predict(X)
+            elif np.median(first) > np.median(second) < np.median(third):
+                model = make_pipeline(PolynomialFeatures(2), RANSACRegressor())
+                model.fit(X, points)
+                points = model.predict(X)
+            else:
+                points = np.linspace(np.mean(first),
+                                     np.mean(third), len(points))
+            edges[point_index] = points
+
+        filtered = []
+        for point_1, point_2 in zip(edges[0], edges[1]):
+            filtered.append((point_1, point_2))
+        return filtered
 
     def evaluate_segmentation(self):
         pass
