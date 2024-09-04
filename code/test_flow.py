@@ -116,7 +116,21 @@ class ManageImage:
         pass
 
     def create_maps(self):
-        pass
+        pixel_map = []
+        for row_idx, (start, stop) in enumerate(pixel_pairs):
+            pixel_map.append((np.linspace(start, stop, len_active)))
+            if first_value:
+                location_start = (int(start), row_idx)
+                location_stop = (int(stop), row_idx)
+            else:
+                location_start = (row_idx, int(start))
+                location_stop = (row_idx, int(stop))
+
+            masked = cv2.circle(image, location_start,
+                                1, color_1, 1)
+            masked = cv2.circle(masked, location_stop,
+                                1, color_2, 1)
+        return pixel_map, masked
 
     def flatten_with_maps(self):
         pass
