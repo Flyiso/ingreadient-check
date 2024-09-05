@@ -87,7 +87,7 @@ class VideoFlow:
             return True
         return False
 
-    def reset_to_previous(self) -> None:
+    def reset_to_previous(sept_configlf) -> None:
         """
         Reset images to previous state.
         """
@@ -230,5 +230,14 @@ class PanoramaManager:
         """
         Evaluate/control performance, parameters, and processes
         of stitcher and input images.
+        """
+        pass
+
+    def stitch_to_panorama(self, frame: np.ndarray):
+        """
+        Stitch the new frame to the panorama.
+
+        :param frame: array- 3channel image
+        :return: Bool- True if stitcher successful
         """
         pass
