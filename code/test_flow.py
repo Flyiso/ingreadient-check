@@ -29,7 +29,10 @@ class VideoFlow:
     This class manages the flow of the frames.
     """
     def __innit__(self):
-        self.frames = ManageImage()
+        self.previous_frame = None
+        self.saved_count = 0
+        self.panorama_manager = PanoramaManager()
+        self.panorama = self.panorama_manager.panorama
 
     def start_video(self):
         self.capture = cv2.VideoCapture(self.video_path)
@@ -39,7 +42,70 @@ class VideoFlow:
                 break
             if cv2.waitKey(25) & 0xFF == 27:
                 break
-            self.frames.add_image(frame)
+            self.check_image(frame)
+            if isinstance(self.panorama, np.ndarray):
+                cv2.imshow('frame', self.panorama)
+
+    def check_image(self, frame: np.ndarray):
+        """
+        check frame and try to add it to panorama.
+
+        :param frame: input frame- numpy array- 3 channel.
+        """
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        if not self.check_blur(gray):
+            return
+        if not self.check_difference(gray):
+            return
+        if not self.panorama_manager.add_image(frame):
+            self.reset_to_previous()
+            return
+        self.panorama = self.panorama_manager.panorama
+
+    def check_difference(self, frame: np.ndarray,
+                         threshold: int = 67000000) -> bool:
+        """
+        Check if image difference threshold is reached, and
+        save image if so.
+
+        :param frame: np.ndarray- grayscale image to compare.
+        :param threshold: int. threshold for image difference.
+        :output: True if image is different enough.
+        """
+        self.memory = None
+        if self.previous_frame is not None:
+            diff = cv2.absdiff(previous_frame, frame).sum
+
+            if diff > threshold:
+                self.memory = previous_frame
+                self.saved_count += 1
+                self.previous_frame = frame
+                return True
+        else:
+            self.previous_frame = gray
+            self.saved_count += 1
+            return True
+        return False
+
+    def reset_to_previous(self) -> None:
+        """
+        Reset images to previous state.
+        """
+        self.saved_count -= 1
+        self.previous_frame = self.memory
+
+    @staticmethod
+    def check_blur(frame: np.ndarray,
+                   threshold: float = 300) -> bool:
+        """
+        Check if frame is sharp enough to stitch.
+
+        :param frame: np.ndarray, image(grayscale) to check blur on.
+        :param threshold: float, optional-defaults to 300.
+        :output: True if not to blurry.
+        """
+        laplacian_var = cv2.Laplacian(frame, cv2.CV_64F).var()
+        return laplacian_var < threshold
 
 
 class ManageImage:
@@ -136,28 +202,33 @@ class ManageImage:
         pass
 
 
-class ManageStitcher:
+class PanoramaManager:
     """
     This class manages the stitcher and makes ensures
     quality and performance
     """
-    def stitch_in_image(self):
+    def __init__(self):
         """
-        Method to use the image manager to modify the image
-        until it works for stitching.
+        stitch images to panorama.
         """
+        self.panorama = None
+
+    def add_image(self, image: np.ndarray) -> bool:
+        """
+        Attempt to pre-process image and add to panorama
+
+        :param image: array, 3-channel img to attempt to stitch.
+        :output: Bool- true if stitching successfull.
+        """
+        # pre-process image
+        # check if panorama present/first frame
+        # attempt stitching
+        # return bool
         pass
 
     def evaluate_result(self):
         """
         Evaluate/control performance, parameters, and processes
         of stitcher and input images.
-        """
-        pass
-
-    def select_frame(self):
-        """
-        Method to select what frames to use in the panorama,
-        to ensure balance between performance and quality.
         """
         pass
