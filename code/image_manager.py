@@ -115,7 +115,7 @@ class ManageFrames:
         method to set threshold values for image
         enhancement
         """
-        print('SET MANAGER VALUES (this not run?)')
+        input('SET MANAGER VALUES (this not run?)')
         frame_data = self.find_text(frame)
         self.set_threshold_values(frame, frame_data)
 
