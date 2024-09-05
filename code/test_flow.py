@@ -74,20 +74,20 @@ class VideoFlow:
         """
         self.memory = None
         if self.previous_frame is not None:
-            diff = cv2.absdiff(previous_frame, frame).sum
+            diff = cv2.absdiff(self.previous_frame, frame).sum
 
             if diff > threshold:
-                self.memory = previous_frame
+                self.memory = self.previous_frame
                 self.saved_count += 1
                 self.previous_frame = frame
                 return True
         else:
-            self.previous_frame = gray
+            self.previous_frame = frame
             self.saved_count += 1
             return True
         return False
 
-    def reset_to_previous(sept_configlf) -> None:
+    def reset_to_previous(self) -> None:
         """
         Reset images to previous state.
         """
