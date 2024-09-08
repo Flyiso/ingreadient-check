@@ -125,7 +125,6 @@ class ManageFrames:
         Returns data dictionary of the text
         found in the frame.
         """
-        print(type(frame))
         data = pt.image_to_data(image=frame, config=self.pt_config,
                                 output_type=output_type)
         return data

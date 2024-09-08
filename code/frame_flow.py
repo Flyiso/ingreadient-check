@@ -33,7 +33,7 @@ class VideoFlow:
     def __innit__(self):
         self.previous_frame = None
         self.saved_count = 0
-        # self.panorama_manager = PanoramaManager()
+        self.panorama_manager = PanoramaManager()
         # self.panorama = self.panorama_manager.panorama
 
     def start_video(self):
@@ -59,6 +59,7 @@ class VideoFlow:
             return
         if not self.check_difference(gray):
             return
+        frame = self.enhance_frame(frame)
         if not self.panorama_manager.add_image(frame):
             self.reset_to_previous()
             return
@@ -108,3 +109,60 @@ class VideoFlow:
         """
         laplacian_var = cv2.Laplacian(frame, cv2.CV_64F).var()
         return laplacian_var < threshold
+
+    @staticmethod
+    def enhance_frame(frame: np.ndarray) -> np.ndarray:
+        """
+        Enhance frame using Clahe.
+
+        :param frame: numpy array, 3 channel image
+        :output: 3 channel numpy array, enhanced.
+        """
+        frame2 = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        clahe = cv2.createCLAHE(clipLimit=1.7, tileGridSize=(5, 5))
+        frame_planes = list(cv2.split(frame2))
+        frame_planes[0] = clahe.apply(frame_planes[0])
+        frame2 = cv2.merge(frame_planes)
+        frame2 = cv2.cvtColor(frame2, cv2.COLOR_LAB2BGR)
+        return frame2
+
+
+class PanoramaManager:
+    def __init__(self):
+        self.image_flattener = ExtractImage()
+        self.panorama = None
+
+    def add_image(self, image) -> np.ndarray | bool:
+        """
+        Add new image to panorama.
+
+        :param image: numpy array of image
+        :output: Bool(False) if something went wrong,
+        else current panorama.
+        """
+        image = self.image_flattener.return_flat(image)
+        if image is False:
+            return False
+        if self.panorama is None:
+            self.panorama = image
+            return True
+        new_panorama = self.stitch_to_panorama(image)
+        if isinstance(np.ndarray, new_panorama):
+            self.panorama = new_panorama
+            return self.panorama
+        return False
+
+    def stitch_to_panorama(self, image):
+        pass
+
+
+class ExtractImage:
+    """
+    Use Grounding Dino and SAM to flatten the
+    interesting area.
+    """
+    def __init__(self):
+        pass
+
+    def return_flat(self, image: np.ndarray) -> np.ndarray:
+        pass
