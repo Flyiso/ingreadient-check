@@ -162,7 +162,66 @@ class ExtractImage:
     interesting area.
     """
     def __init__(self):
-        pass
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        sam_encoder_version = 'vit_h'
+        sam_checkpoint_path = 'weights/sam_vit_h_4b8939.pth'
+        dino_dir = '.venv/lib/python3.11/site-packages/groundingdino/'
+        self.focal_length = False
+        self.dino_model = Model(
+            f'{dino_dir}config/GroundingDINO_SwinT_OGC.py',
+            f'{dino_dir}weights/groundingdino_swint_ogc.pth')
+        self.classes = ['Text or image']  # ['text or image']
+        self.box_threshold = 0.25  # 0.35
+        self.text_threshold = 0.25
+        self.sam_model = sam_model_registry[sam_encoder_version](
+            checkpoint=sam_checkpoint_path).to(device=device)
+        self.sam_predictor = SamPredictor(self.sam_model)
 
     def return_flat(self, image: np.ndarray) -> np.ndarray:
-        pass
+        roi = self.find_label(image)
+        if isinstance(roi, np.ndarray):
+            # do flattening
+            pass
+        return False
+
+    def find_label(self, frame):
+        detections = self.dino_model.predict_with_classes(
+            image=frame,
+            classes=self.enhance_class_names(),
+            box_threshold=self.box_threshold,
+            text_threshold=self.text_threshold)
+        detections.mask = self.segment_label(frame, detections.xyxy)
+        mask_annotator = sv.MaskAnnotator()
+        empty_image = np.zeros((frame.shape), dtype=np.uint8)
+        roi_mask = cv2.cvtColor(mask_annotator.annotate(scene=empty_image,
+                                                        detections=detections,
+                                                        opacity=1),
+                                cv2.COLOR_BGR2GRAY)
+        _, binary_mask = cv2.threshold(roi_mask, 5, 255, cv2.THRESH_BINARY)
+        cv2.imwrite('mask.png', roi_mask)
+        contours, _ = cv2.findContours(binary_mask, 1, 2)
+        img = False
+        if len(contours) >= 1:
+            x, y, w, h = cv2.boundingRect(max(contours, key=cv2.contourArea))
+            img_to_depth = cv2.bitwise_and(frame,
+                                           cv2.cvtColor(binary_mask,
+                                                        cv2.COLOR_GRAY2RGB),
+                                           binary_mask)
+            img_to_depth = img_to_depth[y:y+h, x:x+w]
+        if isinstance(img, np.ndarray):
+            return img
+        return False
+
+    def segment_label(self, frame, xyxy: np.ndarray) -> np.ndarray:
+        """
+        Use GroundedSAM to detect and get mask for text/label area
+        of image.
+        """
+        self.sam_predictor.set_image(frame, image_format='RGB')
+        result_masks = []
+        for box in xyxy:
+            masks, scores, _ = self.sam_predictor.predict(
+                box=box, multimask_output=False)
+            index = np.argmax(scores)
+            result_masks.append(masks[index])
+        return np.array(result_masks)
