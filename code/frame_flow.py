@@ -221,11 +221,14 @@ class ExtractImage:
     def return_flat(self, image: np.ndarray) -> np.ndarray | bool:
         roi = self.find_label(image)
         if isinstance(roi, np.ndarray):
-            flat_img = self.flattener.new_image(image)
+            flat_img = self.flattener.new_image(roi)
             return flat_img
         return False
 
     def find_label(self, frame):
+        """
+        Returns image with label extracted (everything ex ROI is 0.0.0)
+        """
         detections = self.dino_model.predict_with_classes(
             image=frame,
             classes=self.enhance_class_names(),
