@@ -8,8 +8,8 @@ of the label reader.
 import cv2
 import numpy as np
 # unique from main:
-import os
-import shutil
+#import os
+#import shutil
 # unique from image_flattening:
 from sklearn.linear_model import RANSACRegressor
 from sklearn.pipeline import make_pipeline
@@ -17,8 +17,8 @@ from sklearn.preprocessing import PolynomialFeatures
 # unique frm image_manager and text_reader:
 from groundingdino.util.inference import Model
 from segment_anything import sam_model_registry, SamPredictor
-from typing import List
-import pytesseract as pt
+#from typing import List
+#import pytesseract as pt
 import supervision as sv
 import torch
 # unique from panorama_manager:
@@ -30,15 +30,19 @@ class VideoFlow:
     This class manages the flow of the frames and decides what frames
     to create panorama from.
     """
-    def __innit__(self):
+    def __init__(self, video_path: str):
+        self.video_path = video_path
         self.previous_frame = None
         self.saved_count = 0
         self.panorama_manager = PanoramaManager()
-        # self.panorama = self.panorama_manager.panorama
+        self.panorama = None
+        self.start_video()
 
     def start_video(self):
+        self.frame_n = 0
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
+            print(self.frame_n)
             ret, frame = self.capture.read()
             if not ret:
                 break
@@ -47,6 +51,10 @@ class VideoFlow:
             self.check_image(frame)
             if isinstance(self.panorama, np.ndarray):
                 cv2.imshow('frame', self.panorama)
+            self.frame_n += 1
+            print('')
+        self.capture.release()
+        cv2.destroyAllWindows()
 
     def check_image(self, frame: np.ndarray):
         """
@@ -56,11 +64,14 @@ class VideoFlow:
         """
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         if not self.check_blur(gray):
+            print('too blurry')
             return
         if not self.check_difference(gray):
+            print('not different enough')
             return
         frame = self.enhance_frame(frame)
         if not self.panorama_manager.add_image(frame):
+            print('panorama fail.')
             self.reset_to_previous()
             return
         self.panorama = self.panorama_manager.panorama
@@ -77,7 +88,7 @@ class VideoFlow:
         """
         self.memory = None
         if self.previous_frame is not None:
-            diff = cv2.absdiff(self.previous_frame, frame).sum
+            diff = cv2.absdiff(self.previous_frame, frame).sum()
 
             if diff > threshold:
                 self.memory = self.previous_frame
@@ -144,16 +155,45 @@ class PanoramaManager:
         if image is False:
             return False
         if self.panorama is None:
+            print('new panorama base')
             self.panorama = image
             return True
         new_panorama = self.stitch_to_panorama(image)
-        if isinstance(np.ndarray, new_panorama):
-            self.panorama = new_panorama
-            return self.panorama
+        if isinstance(new_panorama, np.ndarray):
+            return True
         return False
 
     def stitch_to_panorama(self, image):
-        pass
+        """
+        Attempt to stitch previous frame/panorama to new image.
+
+        :param image: numpy array of 3-channel image
+        :output: True or False, depending on success.
+        """
+        # TODO: update stitcher parameters for 2 img stitching
+        stitcher = Stitcher(detector='sift',
+                            finder='dp_color',
+                            blender_type='multiband',
+                            blend_strength=10,
+                            matcher_type='homography',
+                            wave_correct_kind='no',
+                            compensator='gain',
+                            nr_feeds=5000,
+                            block_size=1100,
+                            warper_type='paniniA1.5B1',
+                            try_use_gpu=True,
+                            match_conf=0.2)
+        try:
+            new_panorama = stitcher.stitch([self.panorama, image])
+        except stitching_error.StitchingError:
+            print('stitching unsuccessful...')
+            new_panorama = False
+        if isinstance(new_panorama, np.ndarray):
+            self.panorama = cv2.addWeighted(new_panorama, 0.5,
+                                            new_panorama, 0.5, 0)
+            cv2.imwrite('progress_images/FinalPanorama.png', self.panorama)
+            return True
+        return False
 
 
 class ExtractImage:
@@ -176,12 +216,13 @@ class ExtractImage:
         self.sam_model = sam_model_registry[sam_encoder_version](
             checkpoint=sam_checkpoint_path).to(device=device)
         self.sam_predictor = SamPredictor(self.sam_model)
+        self.flattener = FlattenImage()
 
-    def return_flat(self, image: np.ndarray) -> np.ndarray:
+    def return_flat(self, image: np.ndarray) -> np.ndarray | bool:
         roi = self.find_label(image)
         if isinstance(roi, np.ndarray):
-            # do flattening
-            pass
+            flat_img = self.flattener.new_image(image)
+            return flat_img
         return False
 
     def find_label(self, frame):
@@ -200,7 +241,6 @@ class ExtractImage:
         _, binary_mask = cv2.threshold(roi_mask, 5, 255, cv2.THRESH_BINARY)
         cv2.imwrite('mask.png', roi_mask)
         contours, _ = cv2.findContours(binary_mask, 1, 2)
-        img = False
         if len(contours) >= 1:
             x, y, w, h = cv2.boundingRect(max(contours, key=cv2.contourArea))
             img_to_depth = cv2.bitwise_and(frame,
@@ -208,8 +248,8 @@ class ExtractImage:
                                                         cv2.COLOR_GRAY2RGB),
                                            binary_mask)
             img_to_depth = img_to_depth[y:y+h, x:x+w]
-        if isinstance(img, np.ndarray):
-            return img
+        if isinstance(img_to_depth, np.ndarray):
+            return img_to_depth
         return False
 
     def segment_label(self, frame, xyxy: np.ndarray) -> np.ndarray:
@@ -225,3 +265,172 @@ class ExtractImage:
             index = np.argmax(scores)
             result_masks.append(masks[index])
         return np.array(result_masks)
+
+    def enhance_class_names(self) -> list[str]:
+        """
+        Enhances class names by specifying prompt details.
+        Returns updated list.
+        """
+        return [
+            f"{class_name}"
+            for class_name
+            in self.classes
+        ]
+
+
+class FlattenImage:
+    """
+    Class to manage flattening of images
+    """
+    def __init__(self):
+        pass
+
+    def new_image(self, frame: np.ndarray) -> np.ndarray | bool:
+        """
+        Attempt to match left and right edges of ROI to ml model.
+
+        :param frame: numpy array of the image to create map from.
+        :output: frame flattened if successfull, else False.
+        """
+        masked_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame_bgra = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
+        self.frame = self.correct_image(frame=frame_bgra, masked=masked_img)
+        return self.frame
+
+    def correct_image(self, frame: np.ndarray,
+                      masked: np.ndarray) -> np.ndarray:
+        """
+        use estimated size to correct the images shape and perspective
+
+        :param frame: BGRA image
+        :param masked: GRAYSCALE image
+        TODO error management addition.
+        """
+        self.map_a, self.map_b = self.get_flattening_maps(masked)
+        cv2.imwrite('map_b_vertical.png', self.map_b)
+        cv2.imwrite('map_a_horizontal.png', self.map_a)
+        flattened_image = cv2.remap(frame, self.map_a, self.map_b,
+                                    interpolation=cv2.INTER_NEAREST,
+                                    borderMode=cv2.BORDER_WRAP)
+
+        gray = cv2.cvtColor(flattened_image, cv2.COLOR_BGRA2GRAY)
+        flattened_image = cv2.cvtColor(flattened_image, cv2.COLOR_BGRA2BGR)
+        _, mask = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY_INV)
+        flattened_image = self.inpaint_img(flattened_image, mask)
+        cv2.imwrite('flat_img.png', flattened_image)
+        self.frame = flattened_image
+        return self.frame
+
+    def get_flattening_maps(self, masked: np.ndarray):
+        """
+        Method to create 2 maps for flattening/remapping.
+
+        :param masked: 2 dimensional numpy array where all except ROI is 0.
+        :return: 2 arrays of same shape as masked, describing re-map values.
+        """
+        map_base = masked
+        map_base_rotated = cv2.rotate(masked, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+        edge_points = self.get_edge_points(map_base)
+        edge_points = self.manage_outliers(edge_points)
+        edge_points_rotated = self.get_edge_points(map_base_rotated)
+        edge_points_rotated = self.manage_outliers(edge_points_rotated)
+
+        pixel_map_a, masked = self.get_maps(True,
+                                            edge_points,
+                                            len(map_base[0]), masked,
+                                            (255, 255, 0), (0, 0, 255))
+        pixel_map_b, masked = self.get_maps(True,
+                                            edge_points_rotated,
+                                            len(map_base_rotated[0]), masked,
+                                            (255, 0, 255), (0, 255, 0))
+        cv2.imwrite('points.png', masked)
+
+        pixel_map_a = np.array(pixel_map_a).astype(np.float32)
+        pixel_map_b = cv2.rotate(np.array(pixel_map_b),
+                                 cv2.ROTATE_90_CLOCKWISE).astype(np.float32)
+        return pixel_map_a, pixel_map_b
+
+    def get_edge_points(self, map_base: np.ndarray,
+                        reverse: bool = False) -> list:
+        """
+        returns [list of (min/start, max/end) for each row.]
+        indexes of where ROI of each row of the map start and end.
+        Return as list of pairs for each row, starting with lowest value.
+        """
+        edge_points = []
+        for pixel_row in map_base:
+            roi = [idx_nr for idx_nr, pix in enumerate(pixel_row) if pix > 0]
+            if len(roi) < 1:
+                edge_points.append(edge_points[-1])
+            else:
+                edge_points.append((min(roi), max(roi)))
+        if reverse:
+            edge_points = [pair[::-1] for pair in edge_points]
+        return edge_points
+
+    @staticmethod
+    def manage_outliers(edge_points: list):
+        """
+        Replace outlier points with RANSAC regressor and np.linspace.
+
+        :param  edge_points: List of where  edges where detected
+        :output: List where outlier edges have been replaced.
+        """
+        edges = [[edge_point[0] for edge_point in edge_points],
+                 [edge_point[1] for edge_point in edge_points]]
+        for point_index, points in enumerate(edges):
+            first = points[:len(points)//3]
+            second = points[len(points)//3:(len(points)//3)*2]
+            third = points[(len(points)//3)*2:]
+            x = np.linspace(0, len(points), len(points))
+            X = x[:, np.newaxis]
+            if np.median(first) < np.median(second) > np.median(third):
+                model = make_pipeline(PolynomialFeatures(2), RANSACRegressor())
+                model.fit(X, points)
+                points = model.predict(X)
+            elif np.median(first) > np.median(second) < np.median(third):
+                model = make_pipeline(PolynomialFeatures(2), RANSACRegressor())
+                model.fit(X, points)
+                points = model.predict(X)
+            else:
+                points = np.linspace(np.mean(first),
+                                     np.mean(third), len(points))
+            edges[point_index] = points
+
+        filtered = []
+        for point_1, point_2 in zip(edges[0], edges[1]):
+            filtered.append((point_1, point_2))
+        return filtered
+
+    def get_maps(self, first_value: bool,
+                 pixel_pairs: list,
+                 len_active: int, image: np.ndarray,
+                 color_1: tuple, color_2: tuple):
+        """
+        generate the actual maps.
+        TODO: make this take width/difference between numbers into account.
+              for roi length index at the opposite direction.
+        """
+        pixel_map = []
+        for row_idx, (start, stop) in enumerate(pixel_pairs):
+            pixel_map.append((np.linspace(start, stop, len_active)))
+            if first_value:
+                location_start = (int(start), row_idx)
+                location_stop = (int(stop), row_idx)
+            else:
+                location_start = (row_idx, int(start))
+                location_stop = (row_idx, int(stop))
+
+            masked = cv2.circle(image, location_start,
+                                1, color_1, 1)
+            masked = cv2.circle(masked, location_stop,
+                                1, color_2, 1)
+        return pixel_map, masked
+
+    def inpaint_img(self, img, mask):
+        img = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
+        return img
+
+
+VideoFlow('videos/test_video_2.mp4')
