@@ -22,7 +22,8 @@ from segment_anything import sam_model_registry, SamPredictor
 import supervision as sv
 import torch
 # unique from panorama_manager:
-from stitching import Stitcher, stitching_error
+#from stitching import Stitcher, stitching_error
+
 
 
 class VideoFlow:
@@ -36,10 +37,12 @@ class VideoFlow:
         self.saved_count = 0
         self.panorama_manager = PanoramaManager()
         self.panorama = None
+        self.memory = None
         self.start_video()
 
     def start_video(self):
         self.frame_n = 0
+        self.last_saved_frame_n = -50
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
             print(self.frame_n)
@@ -48,7 +51,8 @@ class VideoFlow:
                 break
             if cv2.waitKey(25) & 0xFF == 27:
                 break
-            self.check_image(frame)
+            if self.frame_n - self.last_saved_frame_n >= 50:
+                self.check_image(frame)
             if isinstance(self.panorama, np.ndarray):
                 cv2.imshow('frame', self.panorama)
             self.frame_n += 1
@@ -68,16 +72,21 @@ class VideoFlow:
             return
         if not self.check_difference(gray):
             print('not different enough')
+            self.reset_to_previous()
             return
-        frame = self.enhance_frame(frame)
-        if not self.panorama_manager.add_image(frame):
+        frame_enhanced = self.enhance_frame(frame)
+        if not self.panorama_manager.add_image(frame_enhanced):
             print('panorama fail.')
             self.reset_to_previous()
             return
+        print('new image added to final panorama...')
+        self.last_saved_n = self.frame_n
+        print(f'save frame n {self.last_saved_frame_n}')
+        self.previous_frame = frame
         self.panorama = self.panorama_manager.panorama
 
     def check_difference(self, frame: np.ndarray,
-                         threshold: int = 67000000) -> bool:
+                         threshold: int = 80000000) -> bool:
         """
         Check if image difference threshold is reached, and
         save image if so.
@@ -86,25 +95,28 @@ class VideoFlow:
         :param threshold: int. threshold for image difference.
         :output: True if image is different enough.
         """
-        self.memory = None
         if self.previous_frame is not None:
-            diff = cv2.absdiff(self.previous_frame, frame).sum()
+            previous_frame_gs = cv2.cvtColor(self.previous_frame,
+                                             cv2.COLOR_BGR2GRAY)
+            diff = cv2.absdiff(previous_frame_gs, frame).sum()
 
             if diff > threshold:
                 self.memory = self.previous_frame
                 self.saved_count += 1
                 self.previous_frame = frame
                 return True
-        else:
-            self.previous_frame = frame
-            self.saved_count += 1
-            return True
-        return False
+            return False
+
+        self.previous_frame = frame
+        self.saved_count += 1
+        return True
 
     def reset_to_previous(self) -> None:
         """
         Reset images to previous state.
         """
+        if self.memory is None:
+            return
         self.saved_count -= 1
         self.previous_frame = self.memory
 
@@ -142,24 +154,24 @@ class PanoramaManager:
     def __init__(self):
         self.image_flattener = ExtractImage()
         self.panorama = None
+        self.images = []
 
     def add_image(self, image) -> np.ndarray | bool:
         """
         Add new image to panorama.
 
         :param image: numpy array of image
-        :output: Bool(False) if something went wrong,
-        else current panorama.
+        :output: true or false, depending on success.
         """
         image = self.image_flattener.return_flat(image)
         if image is False:
+            print('problem w flattening')
             return False
         if self.panorama is None:
             print('new panorama base')
             self.panorama = image
             return True
-        new_panorama = self.stitch_to_panorama(image)
-        if isinstance(new_panorama, np.ndarray):
+        if self.stitch_to_panorama(image):
             return True
         return False
 
@@ -171,26 +183,22 @@ class PanoramaManager:
         :output: True or False, depending on success.
         """
         # TODO: update stitcher parameters for 2 img stitching
-        stitcher = Stitcher(detector='sift',
-                            finder='dp_color',
-                            blender_type='multiband',
-                            blend_strength=10,
-                            matcher_type='homography',
-                            wave_correct_kind='no',
-                            compensator='gain',
-                            nr_feeds=5000,
-                            block_size=1100,
-                            warper_type='paniniA1.5B1',
-                            try_use_gpu=True,
-                            match_conf=0.2)
-        try:
+        cv2.imwrite('img_1.png', self.panorama)
+        cv2.imwrite('img_2.png', image)
+        #stitcher = Stitcher(detector='sift')
+        """try:
             new_panorama = stitcher.stitch([self.panorama, image])
         except stitching_error.StitchingError:
             print('stitching unsuccessful...')
-            new_panorama = False
+            new_panorama = None"""
+        stitcher = cv2.Stitcher.create(cv2.Stitcher_SCANS)
+        stitcher.setPanoConfidenceThresh(0.0)
+        status, new_panorama = stitcher.stitch([self.panorama, image])
         if isinstance(new_panorama, np.ndarray):
-            self.panorama = cv2.addWeighted(new_panorama, 0.5,
-                                            new_panorama, 0.5, 0)
+            print('Stitching successfull!')
+            self.panorama = new_panorama
+            #self.panorama = cv2.addWeighted(new_panorama, 0.5,
+            #                                new_panorama, 0.5, 0)
             cv2.imwrite('progress_images/FinalPanorama.png', self.panorama)
             return True
         return False
