@@ -18,12 +18,11 @@ from sklearn.preprocessing import PolynomialFeatures
 from groundingdino.util.inference import Model
 from segment_anything import sam_model_registry, SamPredictor
 #from typing import List
-#import pytesseract as pt
+import pytesseract as pt
 import supervision as sv
 import torch
 # unique from panorama_manager:
 #from stitching import Stitcher, stitching_error
-
 
 
 class VideoFlow:
@@ -92,8 +91,8 @@ class VideoFlow:
         return True
 
     def check_difference(self, frame: np.ndarray,
-                         threshold: int = 70000000,
-                         upper_threshold: int = 150000000) -> bool:
+                         threshold: int = 69000000,
+                         upper_threshold: int = 90000000) -> bool:
         """
         Check if image difference threshold is reached, and
         save image if so.
@@ -112,8 +111,9 @@ class VideoFlow:
                 self.memory = self.previous_frame
                 self.saved_count += 1
                 self.previous_frame = frame
+                print(f'diff_score-{diff}')
                 if diff >= upper_threshold:
-                    self.interval = self.interval//2
+                    self.interval = round((self.interval/3)*2)
                 return True
             self.interval += 5
             return False
@@ -193,26 +193,39 @@ class PanoramaManager:
         :param image: numpy array of 3-channel image
         :output: True or False, depending on success.
         """
-        # TODO: update stitcher parameters for 2 img stitching
-        cv2.imwrite('img_1.png', self.panorama)
-        cv2.imwrite('img_2.png', image)
-        #stitcher = Stitcher(detector='sift')
-        """try:
-            new_panorama = stitcher.stitch([self.panorama, image])
-        except stitching_error.StitchingError:
-            print('stitching unsuccessful...')
-            new_panorama = None"""
         stitcher = cv2.Stitcher.create(cv2.Stitcher_SCANS)
         stitcher.setPanoConfidenceThresh(0.0)
-        status, new_panorama = stitcher.stitch([self.panorama, image])
+        masks = self.get_masks([self.panorama, image])
+        status, new_panorama = stitcher.stitch([self.panorama, image], masks)
         if isinstance(new_panorama, np.ndarray):
-            print('Stitching successfull!')
-            self.panorama = new_panorama
-            #self.panorama = cv2.addWeighted(new_panorama, 0.5,
-            #                                new_panorama, 0.5, 0)
+            self.panorama = cv2.addWeighted(new_panorama, 0.5,
+                                            new_panorama, 0.5, 0)
             cv2.imwrite('progress_images/FinalPanorama.png', self.panorama)
             return True
         return False
+
+    @staticmethod
+    def get_masks(images: list) -> list:
+        """
+        Create masks for each image, highlighting the text.
+
+        :param images: list(of np.arrays)-images to get masks for. 3 chanel.
+        :output: list of black and white masks.
+        """
+        masks = []
+        for img in images:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            boxes = pt.image_to_boxes(gray)
+            mask = np.zeros_like(img, dtype=np.uint8)
+            h, w, _ = img.shape
+            for box in boxes.splitlines():
+                b = box.split()
+                x, y, x2, y2 = int(b[1]), int(b[2]), int(b[3]), int(b[4])
+                y = h - y
+                y2 = h - y2
+                cv2.rectangle(mask, (x, y2), (x2, y), (255, 255, 255), -1)
+            masks.append(mask)
+        return masks
 
 
 class ExtractImage:
