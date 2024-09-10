@@ -41,17 +41,19 @@ class VideoFlow:
         self.start_video()
 
     def start_video(self):
+        self.interval = 25
         self.frame_n = 0
         self.last_saved_frame_n = -50
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
-            print(self.frame_n)
+            print(f'frame nr: {self.frame_n}, interval: {self.interval}')
             ret, frame = self.capture.read()
             if not ret:
                 break
             if cv2.waitKey(25) & 0xFF == 27:
                 break
-            if self.frame_n - self.last_saved_frame_n >= 50:
+            if self.frame_n - self.last_saved_frame_n >= self.interval:
+                print(self.frame_n, self.last_saved_frame_n)
                 self.check_image(frame)
             if isinstance(self.panorama, np.ndarray):
                 cv2.imshow('frame', self.panorama)
@@ -69,30 +71,36 @@ class VideoFlow:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         if not self.check_blur(gray):
             print('too blurry')
-            return
+            return False
+        print('blur check ok')
         if not self.check_difference(gray):
             print('not different enough')
             self.reset_to_previous()
-            return
+            return False
+        print('difference high enough')
         frame_enhanced = self.enhance_frame(frame)
         if not self.panorama_manager.add_image(frame_enhanced):
             print('panorama fail.')
             self.reset_to_previous()
-            return
-        print('new image added to final panorama...')
-        self.last_saved_n = self.frame_n
-        print(f'save frame n {self.last_saved_frame_n}')
+            return False
+        print('panorama succeeded')
+        print(self.frame_n, self.last_saved_frame_n)
         self.previous_frame = frame
+        self.last_saved_frame_n = self.frame_n
+        print(self.frame_n, self.last_saved_frame_n)
         self.panorama = self.panorama_manager.panorama
+        return True
 
     def check_difference(self, frame: np.ndarray,
-                         threshold: int = 80000000) -> bool:
+                         threshold: int = 70000000,
+                         upper_threshold: int = 150000000) -> bool:
         """
         Check if image difference threshold is reached, and
         save image if so.
 
         :param frame: np.ndarray- grayscale image to compare.
         :param threshold: int. threshold for image difference.
+        :param upper_threshold: integer. Trigger to modify frame interval
         :output: True if image is different enough.
         """
         if self.previous_frame is not None:
@@ -104,7 +112,10 @@ class VideoFlow:
                 self.memory = self.previous_frame
                 self.saved_count += 1
                 self.previous_frame = frame
+                if diff >= upper_threshold:
+                    self.interval = self.interval//2
                 return True
+            self.interval += 5
             return False
 
         self.previous_frame = frame
