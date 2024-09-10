@@ -42,8 +42,8 @@ class VideoFlow:
     def start_video(self):
         self.interval = 25
         self.frame_n = 0
-        self.last_saved_frame_n = -50
-        self.diff_threshold = 70000000
+        self.last_saved_frame_n = -25
+        self.diff_threshold = 65000000
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
             print(f'frame nr: {self.frame_n}, interval: {self.interval}')
@@ -57,8 +57,13 @@ class VideoFlow:
                 self.check_image(frame)
             if isinstance(self.panorama, np.ndarray):
                 cv2.imshow('frame', self.panorama)
+                #cv2.imwrite('FinalPanorama.png', self.panorama)
             self.frame_n += 1
             print('')
+            former_frame = frame
+        print('test_final_print...')
+        self.diff_threshold = 0
+        self.check_image(former_frame)
         self.capture.release()
         cv2.destroyAllWindows()
 
@@ -89,21 +94,18 @@ class VideoFlow:
         if isinstance(panorama_success, float):
             print(f'threshold modification-{panorama_success}')
             modifier = round((panorama_success-0.5)*20)  # int val -10 to 10
-            max_change = round((self.diff_threshold/100)*85)  # change of <= 85/100
+            max_change = round(self.diff_threshold*0.5)  # change of <= 50/100
             # do more drastic thresh changes closer to -100 and 100.
             # temporary modification:
             # TODO: update/modify this with accelerating solution.
             print(f'change: {round(max_change*((modifier*abs(modifier))*0.01))}/{max_change}')
             print(f'{self.diff_threshold}->{self.diff_threshold+round(max_change*((modifier*abs(modifier)*0.01)))}')
             self.diff_threshold += round(max_change*((modifier*abs(modifier))*0.01))
-
-            input('-----')
+            # input('-----')
 
         print('panorama succeeded')
-        print(self.frame_n, self.last_saved_frame_n)
         self.previous_frame = frame
         self.last_saved_frame_n = self.frame_n
-        print(self.frame_n, self.last_saved_frame_n)
         self.panorama = self.panorama_manager.panorama
         return True
 
@@ -129,9 +131,9 @@ class VideoFlow:
                 self.previous_frame = frame
                 print(f'diff_score-{diff}')
                 if diff >= upper_threshold:
-                    self.interval = round((self.interval/3)*2)
+                    self.interval = round((self.interval/5)*4)
                 return True
-            self.interval += 5
+            self.interval += 3
             return False
 
         self.previous_frame = frame
@@ -215,20 +217,21 @@ class PanoramaManager:
         # TODO: test stitcher settings.
         masks = self.get_masks([self.panorama, image])
         stitcher = cv2.Stitcher.create(cv2.Stitcher_SCANS)
-        stitcher.setPanoConfidenceThresh(1.0)
-        stitcher.setCompositingResol(-1)
+        stitcher.setCompositingResol(1)
         stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
-        # stitcher.setRegistrationResol(0)
-        # stitcher.setSeamEstimationResol(0)
-        # stitcher.setWaveCorrection(False)
-        status, new_panorama = stitcher.stitch([self.panorama, image], masks)
+        stitcher.setRegistrationResol(1)
+        stitcher.setSeamEstimationResol(0.9)
+        #stitcher.setWaveCorrection(cv2.detail.WAVE_CORRECT_HORIZ)
+        # status, new_panorama = stitcher.stitch([self.panorama, image], masks)
         """if isinstance(new_panorama, np.ndarray):
             self.panorama = cv2.addWeighted(new_panorama, 0.5,
                                             new_panorama, 0.5, 0)
             cv2.imwrite('progress_images/FinalPanorama.png', self.panorama)
             print('Set Higher Value For difference')
             return True"""
-        for value in [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0]:
+        for value in [1.0, 0.9, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5,
+                      0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.1, 0.0]:
+            print(value)
             stitcher.setPanoConfidenceThresh(value)
             status, new_panorama = stitcher.stitch([self.panorama, image],
                                                    masks)
@@ -236,6 +239,7 @@ class PanoramaManager:
                 self.panorama = cv2.addWeighted(new_panorama, 0.5,
                                                 new_panorama, 0.5, 0)
                 print(f'stitcher succeeded at confidence {value}')
+                cv2.imwrite('FinalPanorama.png', self.panorama)
                 return value
         return False
 
@@ -250,7 +254,7 @@ class PanoramaManager:
         masks = []
         for img in images:
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            boxes = pt.image_to_boxes(gray)
+            boxes = pt.image_to_boxes(gray, config='--psm 11')
             mask = np.zeros_like(img, dtype=np.uint8)
             h, w, _ = img.shape
             for box in boxes.splitlines():
@@ -260,6 +264,9 @@ class PanoramaManager:
                 y2 = h - y2
                 cv2.rectangle(mask, (x, y2), (x2, y), (255, 255, 255), -1)
             masks.append(mask)
+        cv2.imwrite('mask_1.png', masks[0])
+        cv2.imwrite('mask_2.png', masks[1])
+        input('check masks...')
         return masks
 
 
@@ -351,6 +358,7 @@ class ExtractImage:
 class FlattenImage:
     """
     Class to manage flattening of images
+    TODO: functionality of sorting out/ignore 'bad' detections.
     """
     def __init__(self):
         pass
