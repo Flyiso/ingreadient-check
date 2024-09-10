@@ -88,13 +88,14 @@ class VideoFlow:
         # modify diff threshold
         if isinstance(panorama_success, float):
             print(f'threshold modification-{panorama_success}')
-            modifier = round((panorama_success-0.5)*2)  # int val -1 to 1
-            max_change = round((self.diff_threshold/10)*8)  # change of <= 8/10
+            modifier = round((panorama_success-0.5)*20)  # int val -10 to 10
+            max_change = round((self.diff_threshold/100)*85)  # change of <= 85/100
             # do more drastic thresh changes closer to -100 and 100.
             # temporary modification:
-            # TODO: update this with accelerating solution.
-            print(f'{self.diff_threshold}->{self.diff_threshold+round(max_change*modifier)}')
-            self.diff_threshold += round(max_change*modifier)
+            # TODO: update/modify this with accelerating solution.
+            print(f'change: {round(max_change*((modifier*abs(modifier))*0.01))}/{max_change}')
+            print(f'{self.diff_threshold}->{self.diff_threshold+round(max_change*((modifier*abs(modifier)*0.01)))}')
+            self.diff_threshold += round(max_change*((modifier*abs(modifier))*0.01))
 
             input('-----')
 
@@ -189,6 +190,8 @@ class PanoramaManager:
         :param image: numpy array of image
         :output: true or false, depending on success.
         """
+        # TODO: manage error:
+        #       (-215:Assertion failed) !err.empty() in function update
         image = self.image_flattener.return_flat(image)
         if image is False:
             print('problem w flattening')
