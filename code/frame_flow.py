@@ -43,6 +43,7 @@ class VideoFlow:
         self.interval = 25
         self.frame_n = 0
         self.last_saved_frame_n = -50
+        self.diff_threshold = 70000000
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
             print(f'frame nr: {self.frame_n}, interval: {self.interval}')
@@ -78,10 +79,25 @@ class VideoFlow:
             return False
         print('difference high enough')
         frame_enhanced = self.enhance_frame(frame)
-        if not self.panorama_manager.add_image(frame_enhanced):
+        panorama_success = self.panorama_manager.add_image(frame_enhanced)
+        if not panorama_success:
             print('panorama fail.')
             self.reset_to_previous()
+            self.diff_threshold -= self.diff_threshold//10
             return False
+        # modify diff threshold
+        if isinstance(panorama_success, float):
+            print(f'threshold modification-{panorama_success}')
+            modifier = round((panorama_success-0.5)*2)  # int val -1 to 1
+            max_change = round((self.diff_threshold/10)*8)  # change of <= 8/10
+            # do more drastic thresh changes closer to -100 and 100.
+            # temporary modification:
+            # TODO: update this with accelerating solution.
+            print(f'{self.diff_threshold}->{self.diff_threshold+round(max_change*modifier)}')
+            self.diff_threshold += round(max_change*modifier)
+
+            input('-----')
+
         print('panorama succeeded')
         print(self.frame_n, self.last_saved_frame_n)
         self.previous_frame = frame
@@ -90,18 +106,17 @@ class VideoFlow:
         self.panorama = self.panorama_manager.panorama
         return True
 
-    def check_difference(self, frame: np.ndarray,
-                         threshold: int = 69000000,
-                         upper_threshold: int = 90000000) -> bool:
+    def check_difference(self, frame: np.ndarray) -> bool:
         """
         Check if image difference threshold is reached, and
         save image if so.
 
         :param frame: np.ndarray- grayscale image to compare.
-        :param threshold: int. threshold for image difference.
-        :param upper_threshold: integer. Trigger to modify frame interval
         :output: True if image is different enough.
         """
+
+        threshold = self.diff_threshold
+        upper_threshold = round(threshold + (threshold/10)*2)
         if self.previous_frame is not None:
             previous_frame_gs = cv2.cvtColor(self.previous_frame,
                                              cv2.COLOR_BGR2GRAY)
@@ -182,9 +197,10 @@ class PanoramaManager:
             print('new panorama base')
             self.panorama = image
             return True
-        if self.stitch_to_panorama(image):
+        return self.stitch_to_panorama(image)
+        """if self.stitch_to_panorama(image):
             return True
-        return False
+        return False"""
 
     def stitch_to_panorama(self, image):
         """
@@ -193,15 +209,31 @@ class PanoramaManager:
         :param image: numpy array of 3-channel image
         :output: True or False, depending on success.
         """
-        stitcher = cv2.Stitcher.create(cv2.Stitcher_SCANS)
-        stitcher.setPanoConfidenceThresh(0.0)
+        # TODO: test stitcher settings.
         masks = self.get_masks([self.panorama, image])
+        stitcher = cv2.Stitcher.create(cv2.Stitcher_SCANS)
+        stitcher.setPanoConfidenceThresh(1.0)
+        stitcher.setCompositingResol(-1)
+        stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
+        # stitcher.setRegistrationResol(0)
+        # stitcher.setSeamEstimationResol(0)
+        # stitcher.setWaveCorrection(False)
         status, new_panorama = stitcher.stitch([self.panorama, image], masks)
-        if isinstance(new_panorama, np.ndarray):
+        """if isinstance(new_panorama, np.ndarray):
             self.panorama = cv2.addWeighted(new_panorama, 0.5,
                                             new_panorama, 0.5, 0)
             cv2.imwrite('progress_images/FinalPanorama.png', self.panorama)
-            return True
+            print('Set Higher Value For difference')
+            return True"""
+        for value in [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0]:
+            stitcher.setPanoConfidenceThresh(value)
+            status, new_panorama = stitcher.stitch([self.panorama, image],
+                                                   masks)
+            if status == cv2.Stitcher_OK:
+                self.panorama = cv2.addWeighted(new_panorama, 0.5,
+                                                new_panorama, 0.5, 0)
+                print(f'stitcher succeeded at confidence {value}')
+                return value
         return False
 
     @staticmethod
