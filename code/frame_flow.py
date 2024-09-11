@@ -37,26 +37,30 @@ class VideoFlow:
         self.panorama_manager = PanoramaManager()
         self.panorama = None
         self.memory = None
+        self.pandiffs = []
         self.start_video()
 
     def start_video(self):
-        self.interval = 25
+        self.interval = 30
         self.frame_n = 0
-        self.last_saved_frame_n = -25
-        self.diff_threshold = 65000000
+        self.last_saved_frame_n = 30
+        self.diff_threshold = 75000000
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
-            print(f'frame nr: {self.frame_n}, interval: {25}')
+            print(f'frame nr: {self.frame_n}, interval: {30}')
             ret, frame = self.capture.read()
             if not ret:
                 break
             if cv2.waitKey(25) & 0xFF == 27:
                 break
-            if self.frame_n - self.last_saved_frame_n >= 25:
+            if self.frame_n - self.last_saved_frame_n >= 30:
                 print(self.frame_n, self.last_saved_frame_n)
                 self.check_image(frame)
             if isinstance(self.panorama, np.ndarray):
-                cv2.imshow('frame', self.panorama)
+                to_show = cv2.resize(self.panorama,
+                                     (self.panorama.shape[0]//2,
+                                      self.panorama.shape[1]//2))
+                cv2.imshow('frame', to_show)
                 #cv2.imwrite('FinalPanorama.png', self.panorama)
             self.frame_n += 1
             print('')
@@ -65,6 +69,7 @@ class VideoFlow:
         self.diff_threshold = 0
         self.check_image(former_frame)
         self.capture.release()
+        print(self.pandiffs)
         cv2.destroyAllWindows()
 
     def check_image(self, frame: np.ndarray):
@@ -79,7 +84,7 @@ class VideoFlow:
             return False
         print('blur check ok')
         if not self.check_difference(gray):
-            print('not different enough')
+            #print('not different enough')
             self.reset_to_previous()
             return False
         print('difference high enough')
@@ -92,6 +97,8 @@ class VideoFlow:
             return False
         # modify diff threshold
         if isinstance(panorama_success, float):
+            # remove later.
+            self.pandiffs.append(self.pandiff)
             print(f'threshold modification-{panorama_success}')
             modifier = round((panorama_success-0.5)*20)  # int val -10 to 10
             max_change = round(self.diff_threshold*0.5)  # change of <= 50/100
@@ -100,8 +107,9 @@ class VideoFlow:
             # TODO: update/modify this with accelerating solution.
             print(f'change: {round(max_change*((modifier*abs(modifier))*0.01))}/{max_change}')
             print(f'{self.diff_threshold}->{self.diff_threshold+round(max_change*((modifier*abs(modifier)*0.01)))}')
-            self.diff_threshold += round(max_change*((modifier*abs(modifier))*0.01))
-            # input('-----')
+            self.diff_threshold = round(max_change*((modifier*abs(modifier))*0.01))
+        else:
+            self.diff_threshold = round(self.diff_threshold*0.66)
 
         print('panorama succeeded')
         self.previous_frame = frame
@@ -120,20 +128,33 @@ class VideoFlow:
 
         threshold = self.diff_threshold
         upper_threshold = round(threshold + (threshold/10)*2)
+        """if isinstance(self.panorama, np.ndarray):
+            print(self.panorama.shape)
+            pan_gs = cv2.cvtColor(self.panorama,
+                                  cv2.COLOR_BGR2GRAY)
+            print(pan_gs.shape)
+            print(frame.shape)
+            pan_gs = pan_gs[:, -frame.shape[1]:]
+            print(pan_gs.shape)
+            self.pandiff = cv2.absdiff(pan_gs, frame).sum()
+            print(f'diff  to  panorama:  {self.pandiff}')"""
         if self.previous_frame is not None:
             previous_frame_gs = cv2.cvtColor(self.previous_frame,
                                              cv2.COLOR_BGR2GRAY)
             diff = cv2.absdiff(previous_frame_gs, frame).sum()
-
+            print(previous_frame_gs.shape)
+            print(frame.shape)
+            input('...')
             if diff > threshold:
                 self.memory = self.previous_frame
                 self.saved_count += 1
                 self.previous_frame = frame
-                print(f'diff_score-{diff}')
+                print(f'diff_score: {diff}')
                 if diff >= upper_threshold:
                     self.interval = round((self.interval/5)*4)
                 return True
             self.interval += 3
+            print(f'not different enough ({diff}/{self.diff_threshold})')
             return False
 
         self.previous_frame = frame
@@ -151,7 +172,7 @@ class VideoFlow:
 
     @staticmethod
     def check_blur(frame: np.ndarray,
-                   threshold: float = 300) -> bool:
+                   threshold: float = 400) -> bool:
         """
         Check if frame is sharp enough to stitch.
 
@@ -216,12 +237,12 @@ class PanoramaManager:
         """
         # TODO: test stitcher settings.
         masks = self.get_masks([self.panorama, image])
-        stitcher = cv2.Stitcher.create(cv2.Stitcher_SCANS)
-        stitcher.setCompositingResol(1)
+        stitcher = cv2.Stitcher.create(cv2.STITCHER_SCANS)
+        #stitcher.setCompositingResol(0)
         stitcher.setInterpolationFlags(cv2.INTER_LANCZOS4)
-        stitcher.setRegistrationResol(1)
-        stitcher.setSeamEstimationResol(0.9)
-        #stitcher.setWaveCorrection(cv2.detail.WAVE_CORRECT_HORIZ)
+        #stitcher.setRegistrationResol(0)
+        #stitcher.setSeamEstimationResol(-1)
+        stitcher.setWaveCorrection(cv2.detail.WAVE_CORRECT_HORIZ)
         # status, new_panorama = stitcher.stitch([self.panorama, image], masks)
         """if isinstance(new_panorama, np.ndarray):
             self.panorama = cv2.addWeighted(new_panorama, 0.5,
@@ -229,25 +250,28 @@ class PanoramaManager:
             cv2.imwrite('progress_images/FinalPanorama.png', self.panorama)
             print('Set Higher Value For difference')
             return True"""
-        for value in [1.0, 0.95,  0.9, 0.85, 0.8, 0.75, 0.7, 0.65,
-                      0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 
-                      0.2, 0.1, 0.0]:
+        conf_vals = [1.0, 0.95,  0.9, 0.85, 0.8, 0.75, 0.7, 0.65,
+                     0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3]
+        for value in conf_vals:
             print(value)
             stitcher.setPanoConfidenceThresh(value)
             status, new_panorama = stitcher.stitch([self.panorama, image],
                                                    masks)
             if status == cv2.Stitcher_OK:
                 # check stitching is ok:
-                max_width_increase = self.panorama.shape[1]+image.shape[1]
-                max_height_increase = self.panorama.shape[0]*1.25
+                max_width_increase = self.panorama.shape[1]+(image.shape[1]*0.95)
+                max_height_increase = self.panorama.shape[0]*1.1
                 if all([new_panorama.shape[0] < max_height_increase,
                         new_panorama.shape[1] < max_width_increase]):
                     self.panorama = cv2.addWeighted(new_panorama, 0.5,
                                                     new_panorama, 0.5, 0)
                     print(f'stitcher succeeded at confidence {value}')
                     cv2.imwrite('FinalPanorama.png', self.panorama)
-                    return value
+                    if value < 0.5:
+                        value = 0.5
+                    return round((value-0.5)*2, 2)
                 print('stitching size problem...')
+                print(f'panorama: {self.panorama.shape}\nNew panorama: {new_panorama.shape}')
         return False
 
     @staticmethod
@@ -270,14 +294,25 @@ class PanoramaManager:
                 y = h - y
                 y2 = h - y2
                 cv2.rectangle(mask, (x, y2), (x2, y), (255, 255, 255), -1)
+            if len(boxes.splitlines()) == 0:
+                mask = np.ones_like(img, dtype=np.unit8)
+                print('no text found-? white mask.')
+                input('---')
+            # mask edge (where flattening & artifacts tend to worse)
+            mask[:, :round(mask.shape[1]*0.075)] = (0, 0, 0)
+            mask[:, -round(mask.shape[1]*0.075):] = (0, 0, 0)
+            mask[:round(mask.shape[0]*0.075), :] = (0, 0, 0)
+            mask[-round(mask.shape[0]*0.075):, :] = (0, 0, 0)
             masks.append(mask)
         cv2.imwrite('mask_1.png', masks[0])
         cv2.imwrite('mask_2.png', masks[1])
         print(f'm1: {masks[0].shape}\nm2: {masks[1].shape}')
         # Hide where no overlap if expected
         if masks[0].shape[1] > masks[1].shape[1]:
-            black_area = masks[0].shape[1] - masks[1].shape[1]
-            masks[0][:, :black_area] = 0
+            black_area = round((masks[0].shape[1] - masks[1].shape[1])*0.75)
+            first_mask = masks[0]
+            first_mask[:, :black_area] = (0, 0, 0)
+            masks[0] = first_mask
         return masks
 
 
