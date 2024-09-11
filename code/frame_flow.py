@@ -46,13 +46,13 @@ class VideoFlow:
         self.diff_threshold = 65000000
         self.capture = cv2.VideoCapture(self.video_path)
         while self.capture.isOpened():
-            print(f'frame nr: {self.frame_n}, interval: {self.interval}')
+            print(f'frame nr: {self.frame_n}, interval: {25}')
             ret, frame = self.capture.read()
             if not ret:
                 break
             if cv2.waitKey(25) & 0xFF == 27:
                 break
-            if self.frame_n - self.last_saved_frame_n >= self.interval:
+            if self.frame_n - self.last_saved_frame_n >= 25:
                 print(self.frame_n, self.last_saved_frame_n)
                 self.check_image(frame)
             if isinstance(self.panorama, np.ndarray):
@@ -229,18 +229,25 @@ class PanoramaManager:
             cv2.imwrite('progress_images/FinalPanorama.png', self.panorama)
             print('Set Higher Value For difference')
             return True"""
-        for value in [1.0, 0.9, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5,
-                      0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.1, 0.0]:
+        for value in [1.0, 0.95,  0.9, 0.85, 0.8, 0.75, 0.7, 0.65,
+                      0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 
+                      0.2, 0.1, 0.0]:
             print(value)
             stitcher.setPanoConfidenceThresh(value)
             status, new_panorama = stitcher.stitch([self.panorama, image],
                                                    masks)
             if status == cv2.Stitcher_OK:
-                self.panorama = cv2.addWeighted(new_panorama, 0.5,
-                                                new_panorama, 0.5, 0)
-                print(f'stitcher succeeded at confidence {value}')
-                cv2.imwrite('FinalPanorama.png', self.panorama)
-                return value
+                # check stitching is ok:
+                max_width_increase = self.panorama.shape[1]+image.shape[1]
+                max_height_increase = self.panorama.shape[0]*1.25
+                if all([new_panorama.shape[0] < max_height_increase,
+                        new_panorama.shape[1] < max_width_increase]):
+                    self.panorama = cv2.addWeighted(new_panorama, 0.5,
+                                                    new_panorama, 0.5, 0)
+                    print(f'stitcher succeeded at confidence {value}')
+                    cv2.imwrite('FinalPanorama.png', self.panorama)
+                    return value
+                print('stitching size problem...')
         return False
 
     @staticmethod
@@ -266,7 +273,11 @@ class PanoramaManager:
             masks.append(mask)
         cv2.imwrite('mask_1.png', masks[0])
         cv2.imwrite('mask_2.png', masks[1])
-        input('check masks...')
+        print(f'm1: {masks[0].shape}\nm2: {masks[1].shape}')
+        # Hide where no overlap if expected
+        if masks[0].shape[1] > masks[1].shape[1]:
+            black_area = masks[0].shape[1] - masks[1].shape[1]
+            masks[0][:, :black_area] = 0
         return masks
 
 
