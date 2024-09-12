@@ -24,3 +24,6 @@ Get input frame.
             !# modify frame interval?
             CONTINUE/RESTART WITH NEXT FRAME(current index+1)
 
+#check for blurry/badly stitched areas after each stitching and save frame nr?(and use close frames to correct?)
+#make sure 'older' sections of framed panorama does not get to pale.
+
