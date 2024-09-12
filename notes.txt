@@ -26,4 +26,5 @@ Get input frame.
 
 #check for blurry/badly stitched areas after each stitching and save frame nr?(and use close frames to correct?)
 #make sure 'older' sections of framed panorama does not get to pale.
+#make sure detection and segmentation step extract areas of  roughly the same shape- avoid when extract the full object or too little of label.
 
