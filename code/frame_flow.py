@@ -37,7 +37,9 @@ class VideoFlow:
         self.panorama_manager = PanoramaManager()
         self.panorama = None
         self.memory = None
+        self.pandiff = False
         self.pandiffs = []
+        self.failed_diffs = []
         self.start_video()
 
     def start_video(self):
@@ -70,6 +72,8 @@ class VideoFlow:
         self.check_image(former_frame)
         self.capture.release()
         print(self.pandiffs)
+        print('failed:')
+        print(f'mean: {np.mean(self.failed_diffs)}\nmedian: {np.median(self.failed_diffs)}\nmax: {max(self.failed_diffs)}\nmin: {min(self.failed_diffs)}')
         cv2.destroyAllWindows()
 
     def check_image(self, frame: np.ndarray):
@@ -90,13 +94,18 @@ class VideoFlow:
         print('difference high enough')
         frame_enhanced = self.enhance_frame(frame)
         panorama_success = self.panorama_manager.add_image(frame_enhanced)
+        print(type(panorama_success))
         if not panorama_success:
             print('panorama fail.')
             self.reset_to_previous()
-            self.diff_threshold -= self.diff_threshold//10
+            self.diff_threshold -= self.diff_threshold//20
+            print(f'diff: {self.pandiff}')
+            print(type(self.pandiff))
+            if isinstance(self.pandiff, np.uint64):
+                self.failed_diffs.append(int(self.pandiff))
             return False
         # modify diff threshold
-        if isinstance(panorama_success, float):
+        if isinstance(panorama_success, (int, float)):
             # remove later.
             self.pandiffs.append(self.pandiff)
             print(f'threshold modification-{panorama_success}')
@@ -109,6 +118,10 @@ class VideoFlow:
             print(f'{self.diff_threshold}->{self.diff_threshold+round(max_change*((modifier*abs(modifier)*0.01)))}')
             self.diff_threshold = round(max_change*((modifier*abs(modifier))*0.01))
         else:
+            if isinstance (self.pandiff, (int, float)):
+                print('add to failed')
+                input('run???')
+                self.failed_diffs.append(self.pandiff)
             self.diff_threshold = round(self.diff_threshold*0.66)
 
         print('panorama succeeded')
@@ -128,23 +141,28 @@ class VideoFlow:
 
         threshold = self.diff_threshold
         upper_threshold = round(threshold + (threshold/10)*2)
-        """if isinstance(self.panorama, np.ndarray):
-            print(self.panorama.shape)
-            pan_gs = cv2.cvtColor(self.panorama,
-                                  cv2.COLOR_BGR2GRAY)
-            print(pan_gs.shape)
-            print(frame.shape)
-            pan_gs = pan_gs[:, -frame.shape[1]:]
-            print(pan_gs.shape)
+        if isinstance(self.panorama, np.ndarray):
+            x = frame.shape[0]/self.panorama.shape[0]
+            pan_s = self.panorama.copy()
+            pan_resized = cv2.resize(pan_s,
+                                     (round(self.panorama.shape[1]*x),
+                                      frame.shape[0]))
+            pan_resized = cv2.cvtColor(pan_resized,
+                                       cv2.COLOR_BGR2GRAY)
+            pan_gs = pan_resized[:,
+                                 pan_resized.shape[1]-frame.shape[1]:
+                                 pan_resized.shape[1]]
             self.pandiff = cv2.absdiff(pan_gs, frame).sum()
-            print(f'diff  to  panorama:  {self.pandiff}')"""
+            print(f'diff  to  panorama:  {self.pandiff}')
+            cv2.imwrite('compare_pan.png', pan_gs)
+            cv2.imwrite('compare_frame.png', frame)
+
         if self.previous_frame is not None:
             previous_frame_gs = cv2.cvtColor(self.previous_frame,
                                              cv2.COLOR_BGR2GRAY)
             diff = cv2.absdiff(previous_frame_gs, frame).sum()
             print(previous_frame_gs.shape)
             print(frame.shape)
-            input('...')
             if diff > threshold:
                 self.memory = self.previous_frame
                 self.saved_count += 1

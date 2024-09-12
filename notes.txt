@@ -1,0 +1,26 @@
+TO-DO's, ideas to test, thoughts, and other stuff to remember/keep track of.
+
+Algorithms to test-
+Get input frame.
+    check distance(in number of frames) since last frame merged to panorama(if any)
+    if distance great enough, continue with these steps(and break if any fails):
+        check if image is sharp enough
+        check if image is different enough(from last approved to panorama(if any))
+        extract label area from frame
+        use RANSAC regressor to 'smoothen' the extracted label boundaries
+        use smoothed label shape to create values for re-shaping maps.
+        re-shape image to adjust/correct for perspective & (possibly)tilt
+        try to stitch image to the panorama(or add as base/first img if none yet.)
+
+        if stitching(or add first) succeed:
+            modify the threshold for difference between frames
+            !# modify interval between checked frames?
+            !# use tesseract when evaluation of success/modificaton of diff&interval?
+            !# process/evaluate panorama result?
+            set the last stitched frame index to current index
+            START OVER WITH NEXT FRAME(current index+interval)
+        else:
+            modify threshold of frame difference(lower it)
+            !# modify frame interval?
+            CONTINUE/RESTART WITH NEXT FRAME(current index+1)
+
