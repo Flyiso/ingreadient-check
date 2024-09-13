@@ -303,7 +303,7 @@ class PanoramaManager:
         masks = []
         for img in images:
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            boxes = pt.image_to_boxes(gray, config='--psm 11')
+            boxes = pt.image_to_boxes(gray, config='--psm 5')
             mask = np.zeros_like(img, dtype=np.uint8)
             h, w, _ = img.shape
             for box in boxes.splitlines():
