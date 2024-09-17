@@ -6,7 +6,8 @@ class RecordLabel:
     Class to manage flow, selection and storage of video frames
     """
     def __init__(self, video_path: str):
-        # Update path to also allow live recording
+        # TODO:Update path to also allow live recording
+        # TODO:Method for if merged_frame_n + interval < current_frame_n
         self.video_path = video_path
         self.frame_memory = []
         self.merge_interval = 50
@@ -55,7 +56,7 @@ class RecordLabel:
         """
         Pre-process frame and try to merge it to the panorama.
         Evaluate results to ensure merge is useful.
-        
+
         :return: True or False, to indicate if success.
         """
         pass
@@ -65,7 +66,9 @@ class RecordLabel:
         Method to update thresholds, variables for frame flow algorithm.
         """
         self.last_merged = self.last_merged+(self.interval-frame_number)
+        self.frame_memory = []
         # other stuff depending on threshold choices?
+        # compare to interval+adjust
 
     def test_threshold(self):
         """
