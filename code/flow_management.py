@@ -11,7 +11,7 @@ class RecordLabel:
         self.video_path = video_path
         self.frame_memory = []
         self.merge_interval = 50
-        self.thresh_frame_interval = True
+        self.thresh_method = 'frame_interval'
         self.start_video()
 
         pass
@@ -61,7 +61,7 @@ class RecordLabel:
         """
         pass
 
-    def update_parameters(self, frame_number):
+    def update_parameters(self, frame_number) -> None:
         """
         Method to update thresholds, variables for frame flow algorithm.
         """
@@ -70,12 +70,17 @@ class RecordLabel:
         # other stuff depending on threshold choices?
         # compare to interval+adjust
 
-    def test_threshold(self):
+    def test_threshold(self) -> bool:
         """
         Method to test if threshold is reached for self.
         This method is to allow test of different threshold methods.
         """
-        if self.thresh_frame_interval:
+        threshold_values = ['frame_interval']
+        if self.thresh_method == 'frame_interval':
             if len(self.frame_memory) >= self.merge_interval:
                 return True
             return False
+        raise AttributeError(
+            f''' approved threshold values are: {", ".join(threshold_values)},\n\
+                got {self.thresh_method}'''
+        )
