@@ -51,6 +51,15 @@ class RecordLabel:
                 return True
         return False
 
+    def merge_to_panorama(self, frame) -> bool:
+        """
+        Pre-process frame and try to merge it to the panorama.
+        Evaluate results to ensure merge is useful.
+        
+        :return: True or False, to indicate if success.
+        """
+        pass
+
     def update_parameters(self, frame_number):
         """
         Method to update thresholds, variables for frame flow algorithm.
