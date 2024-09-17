@@ -34,15 +34,29 @@ class RecordLabel:
                 break
             self.frame_memory.append(frame)
             if self.test_threshold:
-                self.try_frame()
+                self.try_frames()
         self.capture.release()
         cv2.destroyAllWindows()
 
-    def try_frame(self):
+    def try_frames(self) -> bool:
         """
         Try to merge frame saved in self.frame_memory, looped backwards.
+
+        :return: Bool- true or false depending on merge success.
         """
-        pass
+        for frame_number, frame in enumerate(self.frame_memory[::-1]):
+            merged = self.merge_to_panorama(frame)
+            if merged:
+                self.update_parameters(self, frame_number)
+                return True
+        return False
+
+    def update_parameters(self, frame_number):
+        """
+        Method to update thresholds, variables for frame flow algorithm.
+        """
+        self.last_merged = self.last_merged+(self.interval-frame_number)
+        # other stuff depending on threshold choices?
 
     def test_threshold(self):
         """
