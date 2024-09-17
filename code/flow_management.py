@@ -10,6 +10,7 @@ class RecordLabel:
         self.video_path = video_path
         self.frame_memory = []
         self.merge_interval = 50
+        self.thresh_frame_interval = True
         self.start_video()
 
         pass
@@ -32,7 +33,7 @@ class RecordLabel:
             if not ret or cv2.waitKey(25) & 0xFF == 27:
                 break
             self.frame_memory.append(frame)
-            if len(self.frame_memory) >= self.merge_interval:
+            if self.test_threshold:
                 self.try_frame()
         self.capture.release()
         cv2.destroyAllWindows()
@@ -42,3 +43,13 @@ class RecordLabel:
         Try to merge frame saved in self.frame_memory, looped backwards.
         """
         pass
+
+    def test_threshold(self):
+        """
+        Method to test if threshold is reached for self.
+        This method is to allow test of different threshold methods.
+        """
+        if self.thresh_frame_interval:
+            if len(self.frame_memory) >= self.merge_interval:
+                return True
+            return False
