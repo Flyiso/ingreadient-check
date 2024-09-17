@@ -43,7 +43,7 @@ class VideoFlow:
         self.start_video()
 
     def start_video(self):
-        self.interval = 30
+        self.interval = 50
         self.frame_n = 0
         self.last_saved_frame_n = 30
         self.diff_threshold = 75000000
@@ -55,7 +55,7 @@ class VideoFlow:
                 break
             if cv2.waitKey(25) & 0xFF == 27:
                 break
-            if self.frame_n - self.last_saved_frame_n >= 30:
+            if self.frame_n - self.last_saved_frame_n >= 50:
                 print(self.frame_n, self.last_saved_frame_n)
                 self.check_image(frame)
             if isinstance(self.panorama, np.ndarray):
@@ -63,7 +63,6 @@ class VideoFlow:
                                      (self.panorama.shape[0]//2,
                                       self.panorama.shape[1]//2))
                 cv2.imshow('frame', to_show)
-                #cv2.imwrite('FinalPanorama.png', self.panorama)
             self.frame_n += 1
             print('')
             former_frame = frame
@@ -87,23 +86,22 @@ class VideoFlow:
             print('too blurry')
             return False
         print('blur check ok')
-        if not self.check_difference(gray):
-            #print('not different enough')
-            self.reset_to_previous()
-            return False
-        print('difference high enough')
         frame_enhanced = self.enhance_frame(frame)
         panorama_success = self.panorama_manager.add_image(frame_enhanced)
-        print(type(panorama_success))
         if not panorama_success:
             print('panorama fail.')
             self.reset_to_previous()
-            self.diff_threshold -= self.diff_threshold//20
-            print(f'diff: {self.pandiff}')
-            print(type(self.pandiff))
-            if isinstance(self.pandiff, np.uint64):
-                self.failed_diffs.append(int(self.pandiff))
+            #self.diff_threshold -= self.diff_threshold//20
+            #print(f'diff: {self.pandiff}')
+            #print(type(self.pandiff))
+            #if isinstance(self.pandiff, np.uint64):
+            #    self.failed_diffs.append(int(self.pandiff))
             return False
+        print('panorama succeeded')
+        self.previous_frame = frame
+        self.last_saved_frame_n = self.frame_n
+        self.panorama = self.panorama_manager.panorama
+        return True
         # modify diff threshold
         if isinstance(panorama_success, (int, float)):
             # remove later.
@@ -118,7 +116,7 @@ class VideoFlow:
             print(f'{self.diff_threshold}->{self.diff_threshold+round(max_change*((modifier*abs(modifier)*0.01)))}')
             self.diff_threshold = round(max_change*((modifier*abs(modifier))*0.01))
         else:
-            if isinstance (self.pandiff, (int, float)):
+            if isinstaAWnce (self.pandiff, (int, float)):
                 print('add to failed')
                 input('run???')
                 self.failed_diffs.append(self.pandiff)
@@ -261,15 +259,17 @@ class PanoramaManager:
         #stitcher.setRegistrationResol(0)
         #stitcher.setSeamEstimationResol(-1)
         stitcher.setWaveCorrection(cv2.detail.WAVE_CORRECT_HORIZ)
-        # status, new_panorama = stitcher.stitch([self.panorama, image], masks)
-        """if isinstance(new_panorama, np.ndarray):
+
+        status, new_panorama = stitcher.stitch([self.panorama, image], masks)
+        if isinstance(new_panorama, np.ndarray):
             self.panorama = cv2.addWeighted(new_panorama, 0.5,
                                             new_panorama, 0.5, 0)
             cv2.imwrite('progress_images/FinalPanorama.png', self.panorama)
             print('Set Higher Value For difference')
-            return True"""
+            return True
+        return False
         conf_vals = [1.0, 0.95,  0.9, 0.85, 0.8, 0.75, 0.7, 0.65,
-                     0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3]
+                     0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.0]
         for value in conf_vals:
             print(value)
             stitcher.setPanoConfidenceThresh(value)
