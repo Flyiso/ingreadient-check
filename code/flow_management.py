@@ -59,6 +59,13 @@ class RecordLabel:
 
         :return: True or False, to indicate if success.
         """
+        # pre-process
+        # find_label, check shape/if it is similar to previous label detection
+        # flattening and filling of empty spaces.
+        # attempt merge
+        # evaluate merge
+        # -> if evaluation ok, reset panorama to newly merged
+        # return result(ass merge pass or fail)
         pass
 
     def update_parameters(self, frame_number) -> None:
