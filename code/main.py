@@ -1,11 +1,10 @@
 """
 Manages, runs and imports readers modules.
 """
+from flow_management import RecordLabel
 import os
 import shutil
-from video_manager import RecordLabel
-from text_reader import ReadText  # also move later
-import cv2  # remove later/when text class moved to final location
+import cv2
 
 
 def check_directory(img_dir: str, frame_interval: int):
