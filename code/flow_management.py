@@ -1,17 +1,24 @@
 import cv2
+from abc import ABC
 
 
 class RecordLabel:
     """
     Class to manage flow, selection and storage of video frames
     """
-    def __init__(self, video_path: str):
+    def __init__(self, video_path: str, thresh_method: str = 'frame_interval'):
+        """
+        Start video flow and set base parameters for flow management.
+
+        :param video_path: string. path to video location.
+        :param thresh_method: string. How to evaluate when to merge new frame.
+        """
         # TODO:Update path to also allow live recording
         # TODO:Method for if merged_frame_n + interval < current_frame_n
         self.video_path = video_path
         self.frame_memory = []
         self.merge_interval = 50
-        self.thresh_method = 'frame_interval'
+        self.thresh_method = thresh_method
         self.start_video()
 
         pass
@@ -91,3 +98,10 @@ class RecordLabel:
             f''' approved threshold values are: {", ".join(threshold_values)},\n\
                 got {self.thresh_method}'''
         )
+
+
+class ThreshMethods(ABC):
+    """
+    Classes that manage when to merge new frame to panorama.
+    """
+    pass
