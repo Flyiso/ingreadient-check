@@ -33,7 +33,6 @@ class RecordLabel:
         # set self.merge_evaluation_seps & get error if any non-valid values.
 
         # TODO:Add selection of how to run,backtracking and so on.
-        # TODO:Add 
         # TODO:Update path to also allow live recording
         # TODO:Method for if merged_frame_n + interval < current_frame_n
         # TODO:Add methods for checking all other values.
