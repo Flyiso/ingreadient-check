@@ -1,5 +1,6 @@
 """
 File collecting methods for frame selection and evaluation
+TODO: Add option for individual/custom parameters for ThreshMethods subclasses.
 """
 from abc import ABC, abstractmethod
 from flow_management import RecordLabel
