@@ -7,17 +7,33 @@ class RecordLabel:
     Class to manage flow, selection and storage of video frames
     """
     def __init__(self, video_path: str,
-                 thresh_methods: list = [ThreshFrameNumber]):
+                 thresh_methods: list = [ThreshFrameNumber],
+                 thresh_params: list | None = None,
+                 pre_process_steps: list = [],
+                 post_process_steps: list = [],
+                 merge_evaluation_steps: list = []):
         """
         Start video flow and set base parameters for flow management.
 
         :param video_path: string. path to video location.
-        :param thresh_method: list of classes that select what frames to pass
+        :param thresh_method: List of classes that select what frames to pass.
+        :param thresh_params: List of custom/individual settings, as dicts.
+        :param pre-process_steps: List, method(s) for frame pre(merge)-process.
+        :param post-process_steps: List, method(s) for processing panorama.
+        :param merge_evaluation_seps: List methods(s) eval. satisfactory merge.
         """
         # set self.thresh_methods & get error if any non-valid values.
         self.validate_thresholds(thresh_methods)
         self.thresh_methods = thresh_methods
 
+        # set self.pre_process_steps & get error if any non-valid values.
+
+        # set self.post_process_steps & get error if any non-valid values.
+
+        # set self.merge_evaluation_seps & get error if any non-valid values.
+
+        # TODO:Add selection of how to run,backtracking and so on.
+        # TODO:Add 
         # TODO:Update path to also allow live recording
         # TODO:Method for if merged_frame_n + interval < current_frame_n
         # TODO:Add methods for checking all other values.
@@ -90,6 +106,7 @@ class RecordLabel:
         # other stuff depending on threshold choices?
         # compare to interval+adjust
 
+    @staticmethod
     def validate_thresholds(thresh_methods: list):
         """
         Raise AttributeError if any bad arguments in thresh methods.
@@ -108,3 +125,14 @@ class RecordLabel:
                 {", ".joint(str(t_method) for t_method in
                  thresh_methods if not isinstance(t_method, ThreshMethods))}'''
                     )
+
+    @staticmethod
+    def validate_thresh_params(thresh_methods: list,
+                               thresh_params: list | None):
+        """
+        Raise attribute error if any non-valid thresh_param values
+
+        :param thresh_methods: threshold methods/classes choosen
+        :param thresh_params: [{'name':MethodName, 'values':[custom settings]}]
+        """
+        pass
